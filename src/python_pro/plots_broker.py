@@ -26,3 +26,32 @@ class PortfolioVisualizer_over_time:
         )
 
         fig.show()
+
+            def plot_cumulative_performance(self, portfolio_returns, benchmark_returns):
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=portfolio_returns.index,
+            y=(1 + portfolio_returns).cumprod(),
+            mode='lines',
+            name='Portfolio Cumulative Return'
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=benchmark_returns.index,
+            y=(1 + benchmark_returns).cumprod(),
+            mode='lines',
+            name='Benchmark Cumulative Return'
+        ))
+
+        fig.update_layout(
+            title="Cumulative Portfolio Performance vs Benchmark",
+            xaxis_title="Date",
+            yaxis_title="Cumulative Return",
+            xaxis=dict(tickformat="%Y-%m-%d"),
+            yaxis=dict(tickformat="%"),
+            width=900,
+            height=500,
+        )
+
+        fig.show()
