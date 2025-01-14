@@ -1,11 +1,6 @@
-"""
-  - ``plot_covariance`` - plot a correlation matrix
-  - ``plot_weights`` - bar chart of weights
-"""
-
-
 import numpy as np
 import scipy.cluster.hierarchy as sch
+import matplotlib.pyplot as plt
 
 from . import risk_models
 
@@ -14,26 +9,25 @@ try:
 except (ModuleNotFoundError, ImportError):  # pragma: no cover
     raise ImportError("Please install matplotlib via pip or poetry")
 
-
-
 def plot_covariance(cov_matrix, plot_correlation=False, show_tickers=True, **kwargs):
-    if plot_correlation:
-        matrix = risk_models.cov_to_corr(cov_matrix)
-    else:
-        matrix = cov_matrix
-    fig, ax = plt.subplots()
 
-    cax = ax.imshow(matrix)
+    # Convert covariance matrix to correlation if required
+    matrix = cov_to_corr(cov_matrix) if plot_correlation else cov_matrix
+
+    # Create the heatmap
+    fig, ax = plt.subplots()
+    cax = ax.imshow(matrix, cmap='viridis')
     fig.colorbar(cax)
 
+    # Configure tick labels
     if show_tickers:
         ax.set_xticks(np.arange(0, matrix.shape[0], 1))
-        ax.set_xticklabels(matrix.index)
+        ax.set_xticklabels(matrix.index, rotation=90)
         ax.set_yticks(np.arange(0, matrix.shape[0], 1))
         ax.set_yticklabels(matrix.index)
-        plt.xticks(rotation=90)
 
-    _plot_io(**kwargs)
+    # Show the plot
+    plt.show()
 
     return ax
 
@@ -56,19 +50,22 @@ def plot_weights(weights, ax=None, **kwargs):
     _plot_io(**kwargs)
     return ax
 
-# Function to plot historical prices
+#Function to plot historical prices
 def plot_historical_prices(df):
-    tickers = df['ticker'].unique()
+    """
+    Plots historical prices from a DataFrame where tickers are columns,
+    and the index represents dates.
+    """
+    tickers = df.columns 
     plt.figure(figsize=(12, 6))
+    
     for ticker in tickers:
-        ticker_data = df[df['ticker'] == ticker]
-        plt.plot(ticker_data['Date'], ticker_data['Close'], label=ticker)
+        plt.plot(df.index, df[ticker], label=ticker)
+    
     plt.title("Historical Prices")
     plt.xlabel("Date")
-    plt.ylabel("Price")
+    plt.ylabel("Adjusted Close Price")
     plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
     plt.show()
 
 # Function to plot portfolio allocation as a pie chart
