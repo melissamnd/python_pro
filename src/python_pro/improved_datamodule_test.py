@@ -241,5 +241,3 @@ if __name__ == "__main__":
 
                 # Step 12: Plot portfolio allocation
                 plot_portfolio_allocation(portfolio)
-
-
