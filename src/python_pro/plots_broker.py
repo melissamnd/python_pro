@@ -55,3 +55,53 @@ class PortfolioVisualizer_over_time:
         )
 
         fig.show()
+
+        def plot_weights_over_time(self, portfolio_history_df):
+        fig = go.Figure()
+
+        for asset in portfolio_history_df.columns:
+            fig.add_trace(go.Scatter(
+                x=portfolio_history_df.index,
+                y=portfolio_history_df[asset],
+                mode='lines',
+                stackgroup='one',
+                name=asset
+            ))
+
+        fig.update_layout(
+            title="Portfolio Weights Over Time",
+            xaxis_title="Date",
+            yaxis_title="Weight",
+            xaxis=dict(tickformat="%Y-%m-%d"),
+            yaxis=dict(tickformat=".0%"),
+            width=900,
+            height=500,
+        )
+
+        fig.show()
+
+    def plot_drawdown(self, portfolio_returns):
+        cumulative_returns = (1 + portfolio_returns).cumprod()
+        peak = cumulative_returns.cummax()
+        drawdown = (cumulative_returns - peak) / peak
+
+        fig = go.Figure(data=[
+            go.Scatter(
+                x=drawdown.index,
+                y=drawdown,
+                mode='lines',
+                name="Drawdown"
+            )
+        ])
+
+        fig.update_layout(
+            title="Portfolio Drawdown",
+            xaxis_title="Date",
+            yaxis_title="Drawdown",
+            xaxis=dict(tickformat="%Y-%m-%d"),
+            yaxis=dict(tickformat=".0%"),
+            width=900,
+            height=500,
+        )
+
+        fig.show()
