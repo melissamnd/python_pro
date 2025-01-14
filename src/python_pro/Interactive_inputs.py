@@ -138,3 +138,72 @@ def get_target_return():
         raise ValueError("No target return provided!")
     return target_return
 
+# Function to get the rebalancing strategy input from the user
+def get_rebalancing_strategy():
+    root = tk.Tk()
+    root.withdraw()  # Hide the main tkinter window
+
+    # Ask for rebalancing strategy
+    choices = ["End of Week", "End of Month", "Every Quarter"]
+    
+    rebalancing_strategy = simpledialog.askstring("Rebalancing Strategy", 
+                                                  "Choose rebalancing strategy: End of Week, End of Month, or Every Quarter")
+    
+    # Validate the choice
+    if rebalancing_strategy not in choices:
+        print("Invalid choice. Please choose one of the following strategies: End of Week, End of Month, or Every Quarter.")
+        return None
+    
+    return rebalancing_strategy
+
+def get_threshold_input():
+    def on_submit():
+        nonlocal threshold
+        try:
+            threshold = float(threshold_entry.get())
+            if threshold <= 0:
+                raise ValueError("Threshold must be a positive number.")
+            root.quit()
+            root.destroy()
+        except ValueError as e:
+            messagebox.showerror("Invalid Input", f"Invalid input: {e}")
+    
+    threshold = None
+    
+    root = tk.Tk()
+    root.title("Enter Stop-Loss Threshold")
+    
+    tk.Label(root, text="Enter Stop-Loss Threshold (e.g., 0.1 for 10%):").pack(padx=10, pady=5)
+    threshold_entry = tk.Entry(root)
+    threshold_entry.pack(padx=10, pady=5)
+    
+    tk.Button(root, text="Submit", command=on_submit).pack(pady=10)
+    root.mainloop()
+    
+    return threshold
+
+def get_initial_cash_input():
+    def on_submit():
+        nonlocal initial_cash
+        try:
+            initial_cash = float(initial_cash_entry.get())
+            if initial_cash <= 0:
+                raise ValueError("Initial cash must be a positive number.")
+            root.quit()
+            root.destroy()
+        except ValueError as e:
+            messagebox.showerror("Invalid Input", f"Invalid input: {e}")
+    
+    initial_cash = None
+    
+    root = tk.Tk()
+    root.title("Enter Initial Cash")
+    
+    tk.Label(root, text="Enter Initial Cash Amount:").pack(padx=10, pady=5)
+    initial_cash_entry = tk.Entry(root)
+    initial_cash_entry.pack(padx=10, pady=5)
+    
+    tk.Button(root, text="Submit", command=on_submit).pack(pady=10)
+    root.mainloop()
+    
+    return initial_cash
