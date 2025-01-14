@@ -1,11 +1,17 @@
 """
+- Calculating returns from prices
 - Sample covariance
 - Cov to correlation functipn
 """
 import numpy as np
 import pandas as pd
 
-from .expected_returns import returns_from_prices
+def returns_from_prices(prices, log_returns=False):
+    if log_returns:
+        returns = np.log(1 + prices.pct_change(fill_method=None)).dropna(how="all")
+    else:
+        returns = prices.pct_change(fill_method=None).dropna(how="all")
+    return returns
 
 def sample_cov(prices, returns_data=False, frequency=252, log_returns=False, **kwargs):
 
