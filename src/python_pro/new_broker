@@ -275,3 +275,51 @@ class Backtest:
         df.to_csv(f"backtests/{self.backtest_name}.csv")
 
         self.broker.blockchain.add_block(self.backtest_name, df.to_string())
+
+def analyze_all_transactions(backtest_instance):
+    """
+    Analyze all transactions (buys and sells) for each stock present in the 
+    backtest-generated file.
+    """
+    # Get the generated backtest file name
+    backtest_name = backtest_instance.backtest_name  # Name generated in the Backtest instance
+    
+    # Define the full path of the CSV file
+    transaction_log_path = f'backtests/{backtest_name}.csv'
+    
+    # Check if the file exists before reading it
+    if os.path.exists(transaction_log_path):
+        # Read the backtest CSV file
+        df = pd.read_csv(transaction_log_path)
+        
+        # Get all unique tickers
+        tickers = df['Ticker'].unique()
+        
+        # Analyze each ticker
+        for ticker in tickers:
+            print(f"\nAnalyzing transactions for {ticker}:")
+            
+            # Filter transactions for this ticker
+            ticker_df = df[df['Ticker'] == ticker]
+            
+            # Filter buys and sells
+            buy_ticker = ticker_df[ticker_df['Action'] == 'BUY']
+            sell_ticker = ticker_df[ticker_df['Action'] == 'SELL']
+
+            # Calculate the total quantity bought and sold
+            total_bought = buy_ticker['Quantity'].sum()
+            total_sold = sell_ticker['Quantity'].sum()
+
+            # Calculate the average buy and sell price
+            avg_buy_price = (buy_ticker['Quantity'] * buy_ticker['Price']).sum() / total_bought if total_bought > 0 else 0
+            avg_sell_price = (sell_ticker['Quantity'] * sell_ticker['Price']).sum() / total_sold if total_sold > 0 else 0
+
+            # Print results for this ticker
+            print(f"Total {ticker} bought: {total_bought} shares")
+            print(f"Total {ticker} sold: {total_sold} shares")
+            print(f"Average buy price for {ticker}: ${avg_buy_price:.2f}")
+            print(f"Average sell price for {ticker}: ${avg_sell_price:.2f}")
+        
+    else:
+        print(f"The backtest file {transaction_log_path} does not exist.")
+        return None
