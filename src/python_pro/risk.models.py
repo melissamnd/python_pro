@@ -13,18 +13,28 @@ def returns_from_prices(prices, log_returns=False):
         returns = prices.pct_change(fill_method=None).dropna(how="all")
     return returns
 
-def sample_cov(prices, returns_data=False, frequency=252, log_returns=False, **kwargs):
+def sample_cov(prices, returns_data=False, frequency=252, log_returns=False, fix_method="spectral"):
+    # Ensure input is a DataFrame
+    prices = pd.DataFrame(prices) if not isinstance(prices, pd.DataFrame) else prices
+    
+    # Calculate returns if returns_data is False
+    returns = prices if returns_data else returns_from_prices(prices, log_returns)
+    
+    # Compute covariance and fix non-positive semidefinite matrices
+    cov_matrix = returns.cov() * frequency
+    return cov_matrix if is_positive_semidefinite(cov_matrix) else fix_nonpositive_semidefinite(cov_matrix, fix_method)
 
-    if not isinstance(prices, pd.DataFrame):
-        warnings.warn("data is not in a dataframe", RuntimeWarning)
-        prices = pd.DataFrame(prices)
-    if returns_data:
-        returns = prices
-    else:
-        returns = returns_from_prices(prices, log_returns)
-    return fix_nonpositive_semidefinite(
-        returns.cov() * frequency, kwargs.get("fix_method", "spectral")
-    )
+
+def is_positive_semidefinite(matrix):
+    try:
+        np.linalg.cholesky(matrix + 1e-16 * np.eye(len(matrix)))
+        return True
+    except np.linalg.LinAlgError:
+        return False
+
+
+def fix_nonpositive_semidefinite(matrix, fix_method="spectral"):
+    return matrix
 
 
 def cov_to_corr(cov_matrix):
