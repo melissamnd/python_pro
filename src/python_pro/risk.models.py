@@ -40,3 +40,12 @@ def returns_from_prices(prices, log_returns=False):
     else:
         returns = prices.pct_change(fill_method=None).dropna(how="all")
     return returns
+
+def cov_to_corr(cov_matrix):
+    if not isinstance(cov_matrix, pd.DataFrame):
+        warnings.warn("cov_matrix is not a dataframe", RuntimeWarning)
+        cov_matrix = pd.DataFrame(cov_matrix)
+
+    Dinv = np.diag(1 / np.sqrt(np.diag(cov_matrix)))
+    corr = np.dot(Dinv, np.dot(cov_matrix, Dinv))
+    return pd.DataFrame(corr, index=cov_matrix.index, columns=cov_matrix.index)
