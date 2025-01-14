@@ -31,24 +31,43 @@ def plot_covariance(cov_matrix, plot_correlation=False, show_tickers=True, **kwa
 
     return ax
 
-def plot_weights(weights, ax=None, **kwargs):
+def plot_weights(weights, tickers, ax=None, title="Portfolio Weights", **kwargs):
+    """
+    Plot portfolio weights as a horizontal bar chart.
 
-    ax = ax or plt.gca()
+    Parameters:
+    - weights: 1D array of portfolio weights (e.g., [0.4, 0.3, 0.2, 0.1]).
+    - tickers: List of asset tickers corresponding to the weights (e.g., ['AAPL', 'META']).
+    - ax: Optional Matplotlib axis object.
+    - title: Title of the plot (default: "Portfolio Weights").
+    - **kwargs: Additional keyword arguments for customization.
+    
+    Returns:
+    - ax: Matplotlib axis object.
+    """
+    ax = ax or plt.gca()  # Use provided axis or get the current one
 
-    desc = sorted(weights.items(), key=lambda x: x[1], reverse=True)
+    # Sort weights and tickers by weight (largest to smallest)
+    desc = sorted(zip(tickers, weights), key=lambda x: x[1], reverse=True)
     labels = [i[0] for i in desc]
     vals = [i[1] for i in desc]
 
+    # Positions for the bars
     y_pos = np.arange(len(labels))
 
-    ax.barh(y_pos, vals)
-    ax.set_xlabel("Weight")
+    # Create horizontal bar chart
+    ax.barh(y_pos, vals, color=kwargs.get('color', 'blue'))
+    ax.set_xlabel("Weight", fontsize=12)
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(labels)
-    ax.invert_yaxis()
+    ax.set_yticklabels(labels, fontsize=10)
+    ax.invert_yaxis()  # Invert y-axis for descending order
+    ax.set_title(title, fontsize=14)
 
-    _plot_io(**kwargs)
+    # Display the plot
+    plt.show()
+
     return ax
+
 
 #Function to plot historical prices
 def plot_historical_prices(df):
