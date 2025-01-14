@@ -180,6 +180,16 @@ def plot_historical_prices(df):
     plt.tight_layout()
     plt.show()
 
+                # Function to plot portfolio allocation as a pie chart
+def plot_portfolio_allocation(portfolio):
+    labels = list(portfolio.keys())
+    sizes = list(portfolio.values())  
+    plt.figure(figsize=(8, 8))
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
+    plt.title("Portfolio Allocation")
+    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    plt.show()
+
 # Main execution flow
 if __name__ == "__main__":
     # Step 1: Get stock tickers from the user
@@ -228,4 +238,8 @@ if __name__ == "__main__":
                 # Step 11: Display the portfolio weights
                 display(Markdown("### Optimized Portfolio:"))
                 display(pd.DataFrame(list(portfolio.items()), columns=['Ticker', 'Weight']))
+
+                # Step 12: Plot portfolio allocation
+                plot_portfolio_allocation(portfolio)
+
 
