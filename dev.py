@@ -4,6 +4,8 @@ from pybacktestchain.data_module import FirstTwoMoments
 #from pybacktestchain.broker import StopLoss -- we will use our own StopLoss function
 from pybacktestchain.blockchain import load_blockchain
 from datetime import datetime
+from src.python_pro.Interactive_inputs import get_date_inputs, get_initial_cash_input, get_rebalancing_strategy, get_stop_loss_threshold, get_stock_inputs
+from src.python_pro.new_broker import StopLoss_new
 
 # Set verbosity for logging
 verbose = False  # Set to True to enable logging, or False to suppress it
