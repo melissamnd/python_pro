@@ -1,7 +1,7 @@
 #### MY DEV.PY FILE
 
 from pybacktestchain.data_module import FirstTwoMoments
-#from pybacktestchain.broker import StopLoss  
+#from pybacktestchain.broker import StopLoss -- we will use our own StopLoss function
 from pybacktestchain.blockchain import load_blockchain
 from datetime import datetime
 
