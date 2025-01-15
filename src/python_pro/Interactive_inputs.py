@@ -15,7 +15,7 @@ from scipy.stats import skew, kurtosis
 from scipy.optimize import minimize
 from IPython.display import display, Markdown
 from tkinter import simpledialog, messagebox
-from pybacktestchain.data_module import get_stocks_data, get_stock_data  # Import the existing functions
+from pybacktestchain.data_module import get_stocks_data, get_stock_data   
 
 class Data_module2():
     @staticmethod
@@ -144,28 +144,32 @@ def get_target_return():
 
 # Function to get the rebalancing strategy input from the user
 def get_rebalancing_strategy():
+    # Import des classes nécessaires à l'intérieur de la fonction
+    from src.python_pro.new_broker import EndOfWeek, EndOfMonth, EveryQuarter
+
+    # Création de la fenêtre tkinter pour demander la stratégie de rééquilibrage
     root = tk.Tk()
     root.withdraw()  # Masquer la fenêtre principale de Tkinter
-    
-    # Demander la stratégie de rééquilibrage
+
+    # Demander à l'utilisateur de choisir une stratégie
     choices = ["End of Week", "End of Month", "Every Quarter"]
     
     rebalancing_strategy = simpledialog.askstring("Rebalancing Strategy", 
-                                                  "Choose rebalancing strategy: End of Week, End of Month, or Every Quarter")
+                                                "Choose rebalancing strategy: End of Week, End of Month, or Every Quarter")
     
-    # Valider le choix
+    # Valider le choix de l'utilisateur
     if rebalancing_strategy not in choices:
         print("Invalid choice. Please choose one of the following strategies: End of Week, End of Month, or Every Quarter.")
         return None
-    
-    # Retourner la classe appropriée en fonction du choix
+
+    # Retourner la classe appropriée en fonction de la stratégie choisie
     if rebalancing_strategy == "End of Week":
         return EndOfWeek  # Retourne la classe, pas la chaîne de caractères
     elif rebalancing_strategy == "End of Month":
         return EndOfMonth
     elif rebalancing_strategy == "Every Quarter":
         return EveryQuarter
-        
+    
 def get_stop_loss_threshold():
     def on_submit():
         nonlocal stop_loss_threshold
