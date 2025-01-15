@@ -1,3 +1,6 @@
+### MY NEW MODULE FUNCTIONS MODIFYING EXISTING FUNCTIONS AND ADDING NEW FUNCTIONS
+
+
 import tkinter as tk
 import pandas as pd
 import pybacktestchain
@@ -12,42 +15,45 @@ from scipy.stats import skew, kurtosis
 from scipy.optimize import minimize
 from IPython.display import display, Markdown
 from tkinter import simpledialog, messagebox
-from pybacktestchain.data_module import get_stocks_data, get_stock_data
+from pybacktestchain.data_module import get_stocks_data, get_stock_data  # Import the existing functions
 
-class Data_module2(Data_module)
-def get_stock_data(ticker, start_date, end_date):
-    """Retrieve historical stock data for a single ticker using yfinance."""
-    try:
-        stock = yf.Ticker(ticker)
-        data = stock.history(start=start_date, end=end_date, auto_adjust=False, actions=False)
-        data['ticker'] = ticker
-        data.reset_index(inplace=True)
-        return data[['Date', 'ticker', 'Adj Close', 'Volume']]
-    except Exception as e:
-        logging.warning(f"Failed to fetch data for {ticker}: {e}")
-        return pd.DataFrame()
+class Data_module2():
+    @staticmethod
+    def get_stock_data(ticker, start_date, end_date):
+        """Retrieve historical stock data for a single ticker using yfinance."""
+        try:
+            stock = yf.Ticker(ticker)
+            data = stock.history(start=start_date, end=end_date, auto_adjust=False, actions=False)
+            data['ticker'] = ticker
+            data.reset_index(inplace=True)
+            return data[['Date', 'ticker', 'Adj Close', 'Volume']]
+        except Exception as e:
+            logging.warning(f"Failed to fetch data for {ticker}: {e}")
+            return pd.DataFrame()
 
-def get_stocks_data(tickers, start_date, end_date):
-    """Retrieve historical stock data for multiple tickers."""
-    dfs = []
-    
-    for ticker in tickers:
-        df = get_stock_data(ticker, start_date, end_date)
-        if not df.empty:
-            df = df[['Date', 'Adj Close']]  # Keep only 'Date' and 'Adj Close'
-            df['Ticker'] = ticker  # Add a column for ticker
-            dfs.append(df)
-    
-    # Combine all dataframes into one
-    all_data = pd.concat(dfs)
-    
-    # Pivot the data so tickers are columns and dates are rows
-    all_data = all_data.pivot(index='Date', columns='Ticker', values='Adj Close')
-    
-    # Drop rows with NaN values
-    all_data = all_data.dropna(how='all')
-    
-    return all_data
+    @staticmethod
+    def get_stocks_data(tickers, start_date, end_date):
+        """Retrieve historical stock data for multiple tickers."""
+        dfs = []
+        
+        for ticker in tickers:
+            df = Data_module2.get_stock_data(ticker, start_date, end_date)
+            if not df.empty:
+                df = df[['Date', 'Adj Close']]  # Keep only 'Date' and 'Adj Close'
+                df['Ticker'] = ticker  # Add a column for ticker
+                dfs.append(df)
+        
+        # Combine all dataframes into one
+        all_data = pd.concat(dfs)
+        
+        # Pivot the data so tickers are columns and dates are rows
+        all_data = all_data.pivot(index='Date', columns='Ticker', values='Adj Close')
+        
+        # Drop rows with NaN values
+        all_data = all_data.dropna(how='all')
+        
+        return all_data
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -85,42 +91,40 @@ def get_stock_inputs():
 
 # Function to get date inputs via a userform
 def get_date_inputs():
-    def on_submit():
-        nonlocal start_date, end_date
-        start_date = start_date_entry.get()
-        end_date = end_date_entry.get()
-
-        try:
-            # Validate the dates
-            datetime.strptime(start_date, '%Y-%m-%d')
-            datetime.strptime(end_date, '%Y-%m-%d')
-            if start_date > end_date:
-                raise ValueError("Start date must be before end date!")
-            root.quit()
-            root.destroy()
-        except ValueError as e:
-            messagebox.showerror("Invalid Input", f"Invalid date format or range: {e}")
-    
-    start_date = None
-    end_date = None
-    
+    # Fonction pour demander la saisie des dates via une input box (fenêtre graphique)
     root = tk.Tk()
-    root.title("Select Date Range")
-    
-    tk.Label(root, text="Start Date (YYYY-MM-DD):").pack(padx=10, pady=5)
-    start_date_entry = tk.Entry(root)
-    start_date_entry.pack(padx=10, pady=5)
-    
-    tk.Label(root, text="End Date (YYYY-MM-DD):").pack(padx=10, pady=5)
-    end_date_entry = tk.Entry(root)
-    end_date_entry.pack(padx=10, pady=5)
-    
-    tk.Button(root, text="Submit", command=on_submit).pack(pady=10)
-    root.mainloop()
+    root.withdraw()  # Cacher la fenêtre principale de Tkinter
+
+    # Demander la date de début
+    start_date_str = simpledialog.askstring("Start Date", "Please enter the start date (YYYY-MM-DD):")
+    if not start_date_str:
+        return None, None  # Si l'utilisateur annule ou ne rentre rien, on retourne None
+
+    try:
+        # Valider et convertir la date de début
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+    except ValueError:
+        messagebox.showerror("Invalid Date", "Invalid start date format. Please use YYYY-MM-DD.")
+        return None, None  # Retourner None en cas d'erreur
+
+    # Demander la date de fin
+    end_date_str = simpledialog.askstring("End Date", "Please enter the end date (YYYY-MM-DD):")
+    if not end_date_str:
+        return None, None  # Si l'utilisateur annule ou ne rentre rien, on retourne None
+
+    try:
+        # Valider et convertir la date de fin
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+    except ValueError:
+        messagebox.showerror("Invalid Date", "Invalid end date format. Please use YYYY-MM-DD.")
+        return None, None  # Retourner None en cas d'erreur
+
+    if start_date > end_date:
+        messagebox.showerror("Invalid Date Range", "Start date must be before end date!")
+        return None, None  # Retourner None en cas d'erreur
     
     return start_date, end_date
-
-
+    
 def get_target_return():
     """
     Prompt the user to input a target return using a simple dialog box.
@@ -141,47 +145,69 @@ def get_target_return():
 # Function to get the rebalancing strategy input from the user
 def get_rebalancing_strategy():
     root = tk.Tk()
-    root.withdraw()  # Hide the main tkinter window
-
-    # Ask for rebalancing strategy
+    root.withdraw()  # Masquer la fenêtre principale de Tkinter
+    
+    # Demander la stratégie de rééquilibrage
     choices = ["End of Week", "End of Month", "Every Quarter"]
     
     rebalancing_strategy = simpledialog.askstring("Rebalancing Strategy", 
                                                   "Choose rebalancing strategy: End of Week, End of Month, or Every Quarter")
     
-    # Validate the choice
+    # Valider le choix
     if rebalancing_strategy not in choices:
         print("Invalid choice. Please choose one of the following strategies: End of Week, End of Month, or Every Quarter.")
         return None
     
-    return rebalancing_strategy
-
-def get_threshold_input():
+    # Retourner la classe appropriée en fonction du choix
+    if rebalancing_strategy == "End of Week":
+        return EndOfWeek  # Retourne la classe, pas la chaîne de caractères
+    elif rebalancing_strategy == "End of Month":
+        return EndOfMonth
+    elif rebalancing_strategy == "Every Quarter":
+        return EveryQuarter
+        
+def get_stop_loss_threshold():
     def on_submit():
-        nonlocal threshold
+        nonlocal stop_loss_threshold
         try:
-            threshold = float(threshold_entry.get())
-            if threshold <= 0:
+            user_input = threshold_entry.get()
+            # Vérifier que l'entrée n'est pas vide
+            if not user_input:
+                raise ValueError("Input cannot be empty.")
+            
+            # Convertir l'entrée en float
+            stop_loss_threshold = float(user_input)
+            
+            # Vérifier que la valeur est positive
+            if stop_loss_threshold <= 0:
                 raise ValueError("Threshold must be a positive number.")
-            root.quit()
-            root.destroy()
+            
+            root.quit()  # Fermer la fenêtre de l'input
+            root.destroy()  # Détruire la fenêtre
         except ValueError as e:
+            # Afficher un message d'erreur si l'entrée est invalide
             messagebox.showerror("Invalid Input", f"Invalid input: {e}")
     
-    threshold = None
+    # Initialisation de la variable stop_loss_threshold
+    stop_loss_threshold = None
     
+    # Créer la fenêtre Tkinter
     root = tk.Tk()
     root.title("Enter Stop-Loss Threshold")
     
+    # Ajouter un label et un champ de saisie
     tk.Label(root, text="Enter Stop-Loss Threshold (e.g., 0.1 for 10%):").pack(padx=10, pady=5)
     threshold_entry = tk.Entry(root)
     threshold_entry.pack(padx=10, pady=5)
     
+    # Ajouter un bouton de soumission
     tk.Button(root, text="Submit", command=on_submit).pack(pady=10)
+    
+    # Lancer la boucle principale de Tkinter
     root.mainloop()
     
-    return threshold
-
+    return stop_loss_threshold
+    
 def get_initial_cash_input():
     def on_submit():
         nonlocal initial_cash
