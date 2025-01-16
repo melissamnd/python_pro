@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-from .risk_models import cov_to_corr
+import logging
+import os
 
 #---------------------------------------------------------
 # Graphic analysis of the generated backtest file.
@@ -18,229 +19,138 @@ class PortfolioVisualizer:
         """
         self.data = data
 
-    def plot_covariance(self, cov_matrix, plot_correlation=False, show_tickers=True, **kwargs):
-        """
-        Plot the covariance (or correlation) matrix as a heatmap.
-        
-        Parameters:
-        - cov_matrix: Covariance matrix to be plotted.
-        - plot_correlation: Whether to plot correlation instead of covariance (default: False).
-        - show_tickers: Whether to display tickers as labels (default: True).
-        - **kwargs: Additional arguments passed to imshow and customization.
-        """
-        # Convert covariance matrix to correlation if required
-        matrix = cov_to_corr(cov_matrix) if plot_correlation else cov_matrix
-
-        # Create the heatmap
-        fig, ax = plt.subplots()
-        cax = ax.imshow(matrix, cmap='viridis')
-        fig.colorbar(cax)
-
-        # Configure tick labels
-        if show_tickers:
-            ax.set_xticks(np.arange(0, matrix.shape[0], 1))
-            ax.set_xticklabels(matrix.index, rotation=90)
-            ax.set_yticks(np.arange(0, matrix.shape[0], 1))
-            ax.set_yticklabels(matrix.index)
-
-        # Show the plot
-        plt.show()
-
-        return ax
-
-    def plot_weights(self, weights, tickers, ax=None, title="Portfolio Weights", **kwargs):
-        """
-        Plot portfolio weights as a horizontal bar chart.
-
-        Parameters:
-        - weights: 1D array of portfolio weights (e.g., [0.4, 0.3, 0.2, 0.1]).
-        - tickers: List of asset tickers corresponding to the weights (e.g., ['AAPL', 'META']).
-        - ax: Optional Matplotlib axis object.
-        - title: Title of the plot (default: "Portfolio Weights").
-        - **kwargs: Additional keyword arguments for customization.
-        
-        Returns:
-        - ax: Matplotlib axis object.
-        """
-        ax = ax or plt.gca()  # Use provided axis or get the current one
-
-        # Sort weights and tickers by weight (largest to smallest)
-        desc = sorted(zip(tickers, weights), key=lambda x: x[1], reverse=True)
-        labels = [i[0] for i in desc]
-        vals = [i[1] for i in desc]
-
-        # Positions for the bars
-        y_pos = np.arange(len(labels))
-
-        # Create horizontal bar chart
-        ax.barh(y_pos, vals, color=kwargs.get('color', 'blue'))
-        ax.set_xlabel("Weight", fontsize=12)
-        ax.set_yticks(y_pos)
-        ax.set_yticklabels(labels, fontsize=10)
-        ax.invert_yaxis()  # Invert y-axis for descending order
-        ax.set_title(title, fontsize=14)
-
-        # Display the plot
-        plt.show()
-
-        return ax
-
     def plot_historical_prices(self, df):
-        """
-        Plots historical prices from a DataFrame where tickers are columns,
-        and the index represents dates.
-
-        Parameters:
-        - df: DataFrame containing historical prices of assets.
-        """
-        tickers = df.columns 
+        """Plots historical prices from a DataFrame."""
+        
+        # Vérifiez si les données sont disponibles et non vides
+        if df.empty:
+            logging.warning("No data available to plot historical prices.")
+            return
+        
+        tickers = df['ticker'].unique()  # Récupère tous les tickers uniques
         plt.figure(figsize=(12, 6))
 
+        # Plot pour chaque ticker dans l'univers
         for ticker in tickers:
-            plt.plot(df.index, df[ticker], label=ticker)
+            ticker_data = df[df['ticker'] == ticker]
+            
+            if not ticker_data.empty:  # Vérifiez si des données existent pour ce ticker
+                plt.plot(ticker_data['Date'], ticker_data['Adj Close'], label=ticker)
+            else:
+                logging.warning(f"No data available for ticker {ticker}.")
 
-        plt.title("Historical Prices")
+        # Ajouter le titre et les étiquettes
+        plt.title("Historical Prices of Selected Stocks")
         plt.xlabel("Date")
-        plt.ylabel("Adjusted Close Price")
+        plt.ylabel("Adjusted Close Price ($)")
         plt.legend()
+
+        # Affichez le graphique
         plt.show()
 
-    def plot_portfolio_allocation(self, portfolio):
-        """
-        Plot the portfolio allocation as a pie chart.
+        # Sauvegardez dans le répertoire 'backtests_graphs' si nécessaire
+        if not os.path.exists('backtests_graphs'):
+            os.makedirs('backtests_graphs')
 
-        Parameters:
-        - portfolio: Dictionary with asset tickers as keys and weights as values.
-        """
-        labels = list(portfolio.keys())
-        sizes = list(portfolio.values())  
-        plt.figure(figsize=(8, 8))
-        plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
-        plt.title("Portfolio Allocation")
-        plt.axis('equal')  
+        plt.savefig(f"backtests_graphs/Historical_Prices_{self.data['backtest_name']}.png", dpi=900)
         plt.show()
 
-    def plot_portfolio_value(self, portfolio_values_df):
-        """
-        Plot portfolio value over time.
+    def plot_var(self):
+        """Plot Value at Risk (VaR) over time"""
+        returns = self.calculate_returns()
+        var = [self.calculate_var(confidence_level=0.95)] * len(returns)  # VaR constant over time for simplicity
 
-        Parameters:
-        - portfolio_values_df: DataFrame containing portfolio values over time.
-        """
-        fig = go.Figure(data=go.Scatter(
-            x=portfolio_values_df.index,
-            y=portfolio_values_df['Portfolio Value'],
-            mode='lines',
-            name='Portfolio Value'
-        ))
+        # Create a plot of VaR
+        plt.figure(figsize=(12, 6))
+        plt.plot(range(len(returns)), var, label="VaR (95% confidence)", color="red")
+        plt.title("Value at Risk (VaR) Over Time")
+        plt.xlabel("Time")
+        plt.ylabel("VaR")
+        plt.legend()
 
-        fig.update_layout(
-            title="Portfolio Value Over Time",
-            xaxis_title="Date",
-            yaxis_title="Portfolio Value ($)",
-            xaxis=dict(tickformat="%Y-%m-%d"),
-            yaxis=dict(tickprefix="$"),
-            width=900,
-            height=500,
-        )
+        # Save the figure to the 'backtests_graphs' folder
+        if not os.path.exists('backtests_graphs'):
+            os.makedirs('backtests_graphs')
+        
+        plt.savefig(f"backtests_graphs/Value_at_Risk_{self.data['initial_value']}_{self.data['final_value']}.png", dpi=900)
+        plt.show()
 
-        fig.show()
+    def calculate_returns(self):
+        """Calculates the returns of the portfolio"""
+        return np.diff(self.data['PortfolioValue']) / self.data['PortfolioValue'][:-1]
 
-    def plot_cumulative_performance(self, portfolio_returns, benchmark_returns):
-        """
-        Plot cumulative portfolio performance against a benchmark.
+    def calculate_var(self, confidence_level=0.95):
+        """Calculates the Value at Risk (VaR)"""
+        returns = self.calculate_returns()
+        var = np.percentile(returns, (1 - confidence_level) * 100)
+        return var
 
-        Parameters:
-        - portfolio_returns: DataFrame of portfolio returns over time.
-        - benchmark_returns: DataFrame of benchmark returns over time.
-        """
-        fig = go.Figure()
+def analyze_all_transactions(backtest_instance):
+    """
+    Analyse toutes les transactions (achats et ventes) pour chaque action présente
+    dans le fichier généré par le backtest.
+    """
+    # Récupérer le nom du fichier de backtest généré
+    backtest_name = backtest_instance.backtest_name  # Nom généré dans l'instance de Backtest
 
-        fig.add_trace(go.Scatter(
-            x=portfolio_returns.index,
-            y=(1 + portfolio_returns).cumprod(),
-            mode='lines',
-            name='Portfolio Cumulative Return'
-        ))
+    # Définir le chemin complet du fichier CSV
+    transaction_log_path = f'backtests/{backtest_name}.csv'
+    
+    # Vérifier si le fichier existe avant de le lire
+    if os.path.exists(transaction_log_path):
+        # Lire le fichier CSV du backtest
+        df = pd.read_csv(transaction_log_path)
+        
+        # Créer le dossier backtest_stats s'il n'existe pas déjà
+        if not os.path.exists('backtest_stats'):
+            os.makedirs('backtest_stats')
 
-        fig.add_trace(go.Scatter(
-            x=benchmark_returns.index,
-            y=(1 + benchmark_returns).cumprod(),
-            mode='lines',
-            name='Benchmark Cumulative Return'
-        ))
+        stats_list = []  # Liste pour stocker les résultats à sauvegarder dans un fichier
+        
+        # Récupérer tous les tickers uniques
+        tickers = df['Ticker'].unique()
+        print(f"Unique tickers found: {tickers}")
 
-        fig.update_layout(
-            title="Cumulative Portfolio Performance vs Benchmark",
-            xaxis_title="Date",
-            yaxis_title="Cumulative Return",
-            xaxis=dict(tickformat="%Y-%m-%d"),
-            yaxis=dict(tickformat="%"),
-            width=900,
-            height=500,
-        )
+        # Analyser chaque ticker
+        for ticker in tickers:
+            print(f"\nAnalyzing transactions for {ticker}:", flush=True)
+            
+            # Filtrer les transactions pour ce ticker
+            ticker_df = df[df['Ticker'] == ticker]
+            
+            # Filtrer les achats et les ventes
+            buy_ticker = ticker_df[ticker_df['Action'] == 'BUY']
+            sell_ticker = ticker_df[ticker_df['Action'] == 'SELL']
 
-        fig.show()
+            # Calculer la quantité totale achetée et vendue
+            total_bought = buy_ticker['Quantity'].sum()
+            total_sold = sell_ticker['Quantity'].sum()
 
-    def plot_weights_over_time(self, portfolio_history_df):
-        """
-        Plot the weights of assets in the portfolio over time.
+            # Calculer le prix moyen d'achat et de vente
+            avg_buy_price = (buy_ticker['Quantity'] * buy_ticker['Price']).sum() / total_bought if total_bought > 0 else 0
+            avg_sell_price = (sell_ticker['Quantity'] * sell_ticker['Price']).sum() / total_sold if total_sold > 0 else 0
 
-        Parameters:
-        - portfolio_history_df: DataFrame containing portfolio weights over time.
-        """
-        fig = go.Figure()
+            # Affichage des résultats pour ce ticker
+            print(f"Total {ticker} bought: {total_bought} shares", flush=True)
+            print(f"Total {ticker} sold: {total_sold} shares", flush=True)
+            print(f"Average buy price for {ticker}: ${avg_buy_price:.2f}", flush=True)
+            print(f"Average sell price for {ticker}: ${avg_sell_price:.2f}", flush=True)
 
-        for asset in portfolio_history_df.columns:
-            fig.add_trace(go.Scatter(
-                x=portfolio_history_df.index,
-                y=portfolio_history_df[asset],
-                mode='lines',
-                stackgroup='one',
-                name=asset
-            ))
+            # Ajouter les résultats à la liste stats_list pour les sauvegarder dans un fichier
+            stats_list.append({
+                "Ticker": ticker,
+                "Total Bought": total_bought,
+                "Total Sold": total_sold,
+                "Average Buy Price": avg_buy_price,
+                "Average Sell Price": avg_sell_price
+            })
+        
+        # Convertir les résultats en DataFrame et les enregistrer dans un fichier CSV
+        stats_df = pd.DataFrame(stats_list)
+        stats_df.to_csv('backtest_stats/transaction_analysis.csv', index=False)
+        print(stats_df)
+        print(f"Transaction analysis saved to 'backtest_stats/transaction_analysis.csv'", flush=True)
 
-        fig.update_layout(
-            title="Portfolio Weights Over Time",
-            xaxis_title="Date",
-            yaxis_title="Weight",
-            xaxis=dict(tickformat="%Y-%m-%d"),
-            yaxis=dict(tickformat=".0%"),
-            width=900,
-            height=500,
-        )
-
-        fig.show()
-
-    def plot_drawdown(self, portfolio_returns):
-        """
-        Plot the drawdown of the portfolio.
-
-        Parameters:
-        - portfolio_returns: DataFrame containing portfolio returns over time.
-        """
-        cumulative_returns = (1 + portfolio_returns).cumprod()
-        peak = cumulative_returns.cummax()
-        drawdown = (cumulative_returns - peak) / peak
-
-        fig = go.Figure(data=[
-            go.Scatter(
-                x=drawdown.index,
-                y=drawdown,
-                mode='lines',
-                name="Drawdown"
-            )
-        ])
-
-        fig.update_layout(
-            title="Portfolio Drawdown",
-            xaxis_title="Date",
-            yaxis_title="Drawdown",
-            xaxis=dict(tickformat="%Y-%m-%d"),
-            yaxis=dict(tickformat=".0%"),
-            width=900,
-            height=500,
-        )
-
-        fig.show()
-
+    else:
+        print(f"Le fichier de backtest {transaction_log_path} n'existe pas.", flush=True)
+        return None
