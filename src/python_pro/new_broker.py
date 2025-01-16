@@ -60,6 +60,10 @@ class Broker_new(Broker):
         self.max_daily_trades = max_daily_trades  
         self.positions = {}
 
+        self.evolution_time = []  # Liste pour stocker les dates
+        self.evolution_nb_buy = []  # Liste pour stocker le nombre d'achats
+        self.evolution_nb_sell = []  # Liste pour stocker le nombre de ventes
+
     def get_daily_trade_count(self, date: datetime):
         """Returns the number of trades already executed on the given date."""
         daily_trades = self.transaction_log[self.transaction_log['Date'] == date]
@@ -468,61 +472,55 @@ class Backtest():
         plt.savefig(f"backtests_graphs/Cumulative_return/Cumulative_return_with_backtest_{self.backtest_name}.png", dpi=900)
         plt.show()
 
-
     def plot_portfolio_weights(self, start_date, end_date):
-            dates = pd.date_range(start=start_date, end=end_date, freq='M')
-            portfolio_weights = []
-            stock_list = None
+        dates = pd.date_range(start=start_date, end=end_date, freq='M')
+        portfolio_weights = []
+        stock_list = None
 
-            info = self.information_class(
-                s=self.s,
-                data_module=DataModule(get_stocks_data(self.universe, '2015-01-01', '2023-01-01')),
-                time_column=self.time_column,
-                company_column=self.company_column,
-                adj_close_column=self.adj_close_column
-            )
+        info = self.information_class(
+            s=self.s,
+            data_module=DataModule(get_stocks_data(self.universe, '2015-01-01', '2023-01-01')),
+            time_column=self.time_column,
+            company_column=self.company_column,
+            adj_close_column=self.adj_close_column
+        )
 
-            for date in dates:
-                information_set = info.compute_information(date)
-                portfolio = info.compute_portfolio(date, information_set)
-                portfolio_weights.append(portfolio)
-                if stock_list is None:
-                    stock_list = list(portfolio.keys())
+        for date in dates:
+            information_set = info.compute_information(date)
+            portfolio = info.compute_portfolio(date, information_set)
+            portfolio_weights.append(portfolio)
+            if stock_list is None:
+                stock_list = list(portfolio.keys())
 
-            df = pd.DataFrame(portfolio_weights, index=dates, columns=stock_list).fillna(0)
+        df = pd.DataFrame(portfolio_weights, index=dates, columns=stock_list).fillna(0)
 
-            # Create a Plotly figure
-            fig = go.Figure()
+        fig = go.Figure()
 
-            # Add a trace for each stock in the portfolio
-            for stock in df.columns:
-                fig.add_trace(go.Scatter(
-                    x=df.index,
-                    y=df[stock],
-                    mode='lines',
-                    stackgroup='one',  # This creates the stacked effect
-                    name=stock
-                ))
+        for stock in df.columns:
+            fig.add_trace(go.Scatter(
+                x=df.index,
+                y=df[stock],
+                mode='lines',
+                stackgroup='one',  
+                name=stock
+            ))
 
-            fig.update_layout(
-                title='Portfolio Weights Over Time',
-                xaxis_title='Date',
-                yaxis_title='Portfolio Weights',
-                showlegend=True
-            )
+        fig.update_layout(
+            title='Portfolio Weights Over Time',
+            xaxis_title='Date',
+            yaxis_title='Portfolio Weights',
+            showlegend=True
+        )
 
-            # Ensure the folder exists
-            folder_path = 'portfolio_weight_graphs'
-            if not os.path.exists(folder_path):
-                os.makedirs(folder_path)
+        
+        folder_path = 'backtests_graphs/Portfolio_Weights'
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+ 
+        png_path = os.path.join(folder_path, f"{self.backtest_name}_portfolio_weights.png")
+        
+        fig.write_image(png_path)
 
-            # Save the figure as a PNG using Plotly's write_image method - better for visualisation of weight allocaton 
-            png_path = os.path.join(folder_path, f"{self.backtest_name}_portfolio_weights.png")
-            
-            # Ensure Kaleido is installed for saving images
-            fig.write_image(png_path)
+        fig.show()
 
-            # Display the figure (optional)
-            fig.show()
-
-            print(f"Portfolio weights graph saved as {png_path}")
+        print(f"Portfolio weights graph saved as {png_path}")

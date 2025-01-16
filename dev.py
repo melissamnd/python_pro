@@ -36,11 +36,9 @@ backtest = Backtest(
 
 # Run the backtest
 backtest.run_backtest()
-
-#backtest.plot_portfolio_weights(backtest.initial_date, backtest.final_date)
-
 analyze_all_transactions(backtest)
 
+backtest.plot_portfolio_weights(backtest.initial_date, backtest.final_date)
 
 # Load the blockchain to check the results
 block_chain = load_blockchain('backtest')
