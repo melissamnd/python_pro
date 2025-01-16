@@ -4,12 +4,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
+import plotly.graph_objects as go
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import os 
-from pybacktestchain.data_module import get_stocks_data, DataModule, Information
-from pybacktestchain.broker import Position, StopLoss, RebalanceFlag, Broker, Backtest
+from pybacktestchain.data_module import get_stocks_data, DataModule, Information, FirstTwoMoments
+from pybacktestchain.broker import Position, StopLoss, RebalanceFlag, Broker
 from pybacktestchain.utils import generate_random_name
 from typing import Dict
 from numba import jit 
@@ -143,6 +144,7 @@ class Broker_new(Broker):
 
 @dataclass
 class AnalysisTool:
+
     def __init__(self, portfolio_values, initial_value, final_value, risk_free_rate=0.03):
         self.portfolio_values = np.array(portfolio_values)
         self.initial_value = initial_value
@@ -179,55 +181,23 @@ class AnalysisTool:
             "Mean of the Returns": self.mean_returns(),
             "Volatility of the Returns": self.volatility_returns(),
             "Sharpe Ratio": self.sharpe_ratio(),
-            "VaR (95% Confidence)": self.calculate_var(confidence_level=0.95)  # VaR at 95% confidence level
+            "VaR (95% Confidence)": self.calculate_var(confidence_level=0.95)
         }
-    def analyze_all_transactions(backtest_instance):
-    """
-    Analyse toutes les transactions (achats et ventes) pour chaque action présente
-    dans le fichier généré par le backtest.
-    """
-    # Récupérer le nom du fichier de backtest généré
-    backtest_name = backtest_instance.backtest_name  # Nom généré dans l'instance de Backtest
-    
-    # Définir le chemin complet du fichier CSV
-    transaction_log_path = f'backtests/{backtest_name}.csv'
-    
-    # Vérifier si le fichier existe avant de le lire
-    if os.path.exists(transaction_log_path):
-        # Lire le fichier CSV du backtest
-        df = pd.read_csv(transaction_log_path)
-        
-        # Récupérer tous les tickers uniques
-        tickers = df['Ticker'].unique()
-        
-        # Analyser chaque ticker
-        for ticker in tickers:
-            print(f"\nAnalyzing transactions for {ticker}:")
-            
-            # Filtrer les transactions pour ce ticker
-            ticker_df = df[df['Ticker'] == ticker]
-            
-            # Filtrer les achats et les ventes
-            buy_ticker = ticker_df[ticker_df['Action'] == 'BUY']
-            sell_ticker = ticker_df[ticker_df['Action'] == 'SELL']
 
-            # Calculer la quantité totale achetée et vendue
-            total_bought = buy_ticker['Quantity'].sum()
-            total_sold = sell_ticker['Quantity'].sum()
+    def save_statistics_to_file(self, output_dir="backtest_stats"):
+        # Créer le dossier 'backtest_stats' s'il n'existe pas
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-            # Calculer le prix moyen d'achat et de vente
-            avg_buy_price = (buy_ticker['Quantity'] * buy_ticker['Price']).sum() / total_bought if total_bought > 0 else 0
-            avg_sell_price = (sell_ticker['Quantity'] * sell_ticker['Price']).sum() / total_sold if total_sold > 0 else 0
-
-            # Affichage des résultats pour ce ticker
-            print(f"Total {ticker} bought: {total_bought} shares")
-            print(f"Total {ticker} sold: {total_sold} shares")
-            print(f"Average buy price for {ticker}: ${avg_buy_price:.2f}")
-            print(f"Average sell price for {ticker}: ${avg_sell_price:.2f}")
+        stats = self.analyze()
         
-    else:
-        print(f"Le fichier de backtest {transaction_log_path} n'existe pas.")
-        return None
+        # Créer le fichier CSV pour enregistrer les statistiques
+        stats_df = pd.DataFrame(stats.items(), columns=["Metric", "Value"])
+        stats_df.to_csv(f"{output_dir}/backtest_statistics.csv", index=False)
+
+        # Affichage dans la console
+        print(stats_df)
+
 #---------------------------------------------------------
 # Creating new classes allowing for new rebalances
 #---------------------------------------------------------
@@ -270,7 +240,7 @@ class EveryQuarter:
 # Plot graphs
 
 @dataclass
-class Backtest2:
+class Backtest():
     initial_date: datetime
     final_date: datetime
     initial_cash: int = 1000000  # Default initial cash
@@ -296,10 +266,6 @@ class Backtest2:
         self.broker.initialize_blockchain(self.name_blockchain)
         self.backtest_name = generate_random_name()
 
-        # Initialize weights and portfolio_values
-        self.weights = {}
-        self.portfolio_values = []
-
     def run_backtest(self):
         from python_pro.new_broker import Broker_new
         logging.info(f"Running backtest from {self.initial_date} to {self.final_date}.")
@@ -324,6 +290,8 @@ class Backtest2:
                                     company_column=self.company_column,
                                     adj_close_column=self.adj_close_column)
 
+        portfolio_values = []
+
         # Run the backtest
         for t in pd.date_range(start=self.initial_date, end=self.final_date, freq='D'):
             if self.risk_model is not None:
@@ -341,10 +309,10 @@ class Backtest2:
 
             if prices:
                 portfolio_value = self.broker.get_portfolio_value(prices)
-                self.portfolio_values.append({'Date': t, 'PortfolioValue': portfolio_value})
+                portfolio_values.append({'Date': t, 'PortfolioValue': portfolio_value})
 
         # Save the portfolio values to a DataFrame
-        portfolio_values_df = pd.DataFrame(self.portfolio_values)
+        portfolio_values_df = pd.DataFrame(portfolio_values)
 
         # Calculate portfolio returns and add them as a new column
         portfolio_values_df['PortfolioReturn'] = portfolio_values_df['PortfolioValue'].pct_change()
@@ -353,6 +321,17 @@ class Backtest2:
 
         # Print the DataFrame directly
         print(portfolio_values_df)
+
+        # Calculate and print statistics
+        if 'PortfolioReturn' in portfolio_values_df.columns:
+            valid_returns = portfolio_values_df['PortfolioReturn'].dropna()
+            avg_return = valid_returns.mean()
+            std_dev = valid_returns.std()
+
+            print("Portfolio Return Statistics:")
+            print(f"Average Return: {avg_return:.6f}")
+            print(f"Standard Deviation: {std_dev:.6f}")
+
 
         logging.info(f"Backtest completed. Final portfolio value: {self.broker.get_portfolio_value(info.get_prices(self.final_date))}")
         df = self.broker.get_transaction_log()
@@ -368,16 +347,16 @@ class Backtest2:
         self.broker.blockchain.add_block(self.backtest_name, df.to_string())
 
         # Now plot and save the graphs
-        self.plot_portfolio_value_over_time()
-        self.plot_historical_prices(df)
+        self.plot_portfolio_value_over_time(portfolio_values_df)
+        self.plot_cumulative_return_over_time(portfolio_values_df)
 
-    def plot_portfolio_value_over_time(self):
+    def plot_portfolio_value_over_time(self,portfolio_values_df):
         """Plot portfolio value over time."""
         plt.figure(figsize=(12, 6))
-        plt.plot([p['Date'] for p in self.portfolio_values], [p['PortfolioValue'] for p in self.portfolio_values], label="Portfolio Value")
+        plt.plot(portfolio_values_df['Date'], portfolio_values_df['PortfolioValue'], label="Portfolio Value")
         plt.title("Portfolio Value Over Time")
         plt.xlabel("Time")
-        plt.ylabel("Portfolio Value ($)")
+        plt.ylabel("Portfolio Value")
         plt.legend()
 
         # Save the figure to the 'backtests_graphs' folder
@@ -387,38 +366,72 @@ class Backtest2:
         plt.savefig(f"backtests_graphs/Portfolio_Value_Evolution_with_backtest_{self.backtest_name}.png", dpi=900)
         plt.show()
 
-    def plot_historical_prices(self, df):
-        """Plots historical prices from a DataFrame."""
-        
-        # Vérifiez si les données sont disponibles et non vides
-        if df.empty:
-            logging.warning("No data available to plot historical prices.")
-            return
-        
-        tickers = df['ticker'].unique()  # Récupère tous les tickers uniques
+    def plot_cumulative_return_over_time(self,portfolio_values_df):
+        """Plot cumulative return over time."""
         plt.figure(figsize=(12, 6))
-
-        # Plot pour chaque ticker dans l'univers
-        for ticker in tickers:
-            ticker_data = df[df['ticker'] == ticker]
-            
-            if not ticker_data.empty:  # Vérifiez si des données existent pour ce ticker
-                plt.plot(ticker_data['Date'], ticker_data['Adj Close'], label=ticker)
-            else:
-                logging.warning(f"No data available for ticker {ticker}.")
-
-        # Ajouter le titre et les étiquettes
-        plt.title("Historical Prices of Selected Stocks")
-        plt.xlabel("Date")
-        plt.ylabel("Adjusted Close Price ($)")
+        plt.plot(portfolio_values_df['Date'], portfolio_values_df['CumulativeReturn'], label="Portfolio Value")
+        plt.title("Cumulative Return")
+        plt.xlabel("Time")
+        plt.ylabel("Cumulative Return (%)")
         plt.legend()
 
-        # Affichez le graphique
+        plt.savefig(f"backtests_graphs/Cumulative_return_with_backtest_{self.backtest_name}.png", dpi=900)
         plt.show()
 
-        # Sauvegardez dans le répertoire 'backtests_graphs' si nécessaire
-        if not os.path.exists('backtests_graphs'):
-            os.makedirs('backtests_graphs')
+    def plot_portfolio_weights(self, start_date, end_date, portfolio_weights):
+        dates = pd.date_range(start=start_date, end=end_date, freq='M')
+        portfolio_weights = []
+        stock_list = None
 
-        plt.savefig(f"backtests_graphs/Historical_Prices_{self.backtest_name}.png", dpi=900)
-        plt.show()
+        info = self.information_class(
+            s=self.s,
+            data_module=DataModule(get_stocks_data(self.universe, '2015-01-01', '2023-01-01')),
+            time_column=self.time_column,
+            company_column=self.company_column,
+            adj_close_column=self.adj_close_column
+        )
+
+        for date in dates:
+            information_set = info.compute_information(date)
+            portfolio = info.compute_portfolio(date, information_set)
+            portfolio_weights.append(portfolio)
+            if stock_list is None:
+                stock_list = list(portfolio.keys())
+
+        df = pd.DataFrame(portfolio_weights, index=dates, columns=stock_list).fillna(0)
+
+        # Create a Plotly figure
+        fig = go.Figure()
+
+        # Add a trace for each stock in the portfolio
+        for stock in df.columns:
+            fig.add_trace(go.Scatter(
+                x=df.index,
+                y=df[stock],
+                mode='lines',
+                stackgroup='one',  # This creates the stacked effect
+                name=stock
+            ))
+
+        fig.update_layout(
+            title='Portfolio Weights Over Time',
+            xaxis_title='Date',
+            yaxis_title='Portfolio Weights',
+            showlegend=True
+        )
+
+        # Ensure the folder exists
+        folder_path = 'portfolio_weight_graphs'
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        # Save the figure as a PNG using Plotly's write_image method - better for visualisation of weight allocaton 
+        png_path = os.path.join(folder_path, f"{self.backtest_name}_portfolio_weights.png")
+        
+        # Ensure Kaleido is installed for saving images
+        fig.write_image(png_path)
+
+        # Display the figure (optional)
+        fig.show()
+
+        print(f"Portfolio weights graph saved as {png_path}")
