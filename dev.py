@@ -5,7 +5,8 @@ from pybacktestchain.data_module import FirstTwoMoments, get_stocks_data
 from pybacktestchain.blockchain import load_blockchain
 from datetime import datetime
 from src.python_pro.Interactive_inputs import get_date_inputs, get_initial_cash_input, get_rebalancing_strategy, get_stop_loss_threshold, get_stock_inputs
-from src.python_pro.new_broker import StopLoss_new, Backtest2
+from src.python_pro.new_broker import StopLoss_new, Backtest, AnalysisTool
+from src.python_pro.visualizing import PortfolioVisualizer, analyze_all_transactions
 
 # Set verbosity for logging
 verbose = False  # Set to True to enable logging, or False to suppress it
@@ -20,7 +21,7 @@ tickers = get_stock_inputs()  # Get the list of stock tickers
 rebalancing_strategy_instance = rebalancing_strategy()
 
 # Now we need to use the Backtest class, correctly passing the parameters.
-backtest = Backtest2(
+backtest = Backtest(
     initial_date=start_date,         # Start date for the backtest (DYNAMIC)      
     final_date=end_date,             # End date for the backtest (DYNAMIC)
     threshold=stop_loss_threshold,   # The stop-loss threshold value (DYNAMIC)
@@ -36,15 +37,18 @@ backtest = Backtest2(
 # Run the backtest
 backtest.run_backtest()
 
+# Instancier le visualiseur de portefeuille
+#visualizer = PortfolioVisualizer(data=backtest.portfolio_values)
+#visualizer.plot_historical_prices(df)
+#visualizer.plot_var()
+analyze_all_transactions(backtest)
+
+backtest.save_statistics_to_file()
+backtest.plot_portfolio_value_over_time(portfolio_values_df)  
+backtest.plot_cumulative_return_over_time(portfolio_values_df)
+
 # Load the blockchain to check the results
 block_chain = load_blockchain('backtest')
 print(str(block_chain)) # Print the blockchain content (backtest results)
 # Check if the blockchain is valid
 print(block_chain.is_valid())
-
-analyze_all_transactions(backtest)
-# Generate and save the graphs after the backtest
-backtest.plot_portfolio_value_over_time()  # Plot portfolio value
-#backtest.plot_weights(backtest.weights, backtest.universe)  # Plot portfolio weights
-backtest.plot_historical_prices()  # Plot historical prices
-#backtest.plot_portfolio_allocation(backtest.broker.positions)  # Plot portfolio allocation
