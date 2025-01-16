@@ -4,6 +4,10 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from .risk_models import cov_to_corr
 
+#---------------------------------------------------------
+# Graphic analysis of the generated backtest file.
+#---------------------------------------------------------
+
 class PortfolioVisualizer:
     def __init__(self, data=None):
         """
@@ -239,3 +243,4 @@ class PortfolioVisualizer:
         )
 
         fig.show()
+
