@@ -13,7 +13,7 @@ from pybacktestchain.broker import Position, StopLoss, RebalanceFlag, Broker, Ba
 from pybacktestchain.utils import generate_random_name
 from typing import Dict
 from numba import jit 
-from python_pro.Interactive_inputs import get_rebalancing_strategy
+from python_pro.Interactive_inputs import get_rebalancing_strategy, get_stocks_data, get_stock_data
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -181,6 +181,53 @@ class AnalysisTool:
             "Sharpe Ratio": self.sharpe_ratio(),
             "VaR (95% Confidence)": self.calculate_var(confidence_level=0.95)  # VaR at 95% confidence level
         }
+    def analyze_all_transactions(backtest_instance):
+    """
+    Analyse toutes les transactions (achats et ventes) pour chaque action présente
+    dans le fichier généré par le backtest.
+    """
+    # Récupérer le nom du fichier de backtest généré
+    backtest_name = backtest_instance.backtest_name  # Nom généré dans l'instance de Backtest
+    
+    # Définir le chemin complet du fichier CSV
+    transaction_log_path = f'backtests/{backtest_name}.csv'
+    
+    # Vérifier si le fichier existe avant de le lire
+    if os.path.exists(transaction_log_path):
+        # Lire le fichier CSV du backtest
+        df = pd.read_csv(transaction_log_path)
+        
+        # Récupérer tous les tickers uniques
+        tickers = df['Ticker'].unique()
+        
+        # Analyser chaque ticker
+        for ticker in tickers:
+            print(f"\nAnalyzing transactions for {ticker}:")
+            
+            # Filtrer les transactions pour ce ticker
+            ticker_df = df[df['Ticker'] == ticker]
+            
+            # Filtrer les achats et les ventes
+            buy_ticker = ticker_df[ticker_df['Action'] == 'BUY']
+            sell_ticker = ticker_df[ticker_df['Action'] == 'SELL']
+
+            # Calculer la quantité totale achetée et vendue
+            total_bought = buy_ticker['Quantity'].sum()
+            total_sold = sell_ticker['Quantity'].sum()
+
+            # Calculer le prix moyen d'achat et de vente
+            avg_buy_price = (buy_ticker['Quantity'] * buy_ticker['Price']).sum() / total_bought if total_bought > 0 else 0
+            avg_sell_price = (sell_ticker['Quantity'] * sell_ticker['Price']).sum() / total_sold if total_sold > 0 else 0
+
+            # Affichage des résultats pour ce ticker
+            print(f"Total {ticker} bought: {total_bought} shares")
+            print(f"Total {ticker} sold: {total_sold} shares")
+            print(f"Average buy price for {ticker}: ${avg_buy_price:.2f}")
+            print(f"Average sell price for {ticker}: ${avg_sell_price:.2f}")
+        
+    else:
+        print(f"Le fichier de backtest {transaction_log_path} n'existe pas.")
+        return None
 #---------------------------------------------------------
 # Creating new classes allowing for new rebalances
 #---------------------------------------------------------
@@ -322,51 +369,7 @@ class Backtest2:
 
         # Now plot and save the graphs
         self.plot_portfolio_value_over_time()
-        self.plot_weights(self.weights)
         self.plot_historical_prices(df)
-        self.plot_portfolio_allocation(self.broker.positions)
-
-    def plot_portfolio_weights(self, start_date, end_date):
-        dates = pd.date_range(start=start_date, end=end_date, freq='M')
-        portfolio_weights = []
-        stock_list = None
-
-        info = self.information_class(
-            s=self.s,
-            data_module=DataModule(get_stocks_data(self.universe, '2015-01-01', '2023-01-01')),
-            time_column=self.time_column,
-            company_column=self.company_column,
-            adj_close_column=self.adj_close_column
-        )
-
-        for date in dates:
-            information_set = info.compute_information(date)
-            portfolio = info.compute_portfolio(date, information_set)
-            portfolio_weights.append(portfolio)
-            if stock_list is None:
-                stock_list = list(portfolio.keys())
-
-        df = pd.DataFrame(portfolio_weights, index=dates, columns=stock_list).fillna(0)
-
-        # Create a Plotly figure
-        fig = go.Figure()
-
-        # Add a trace for each stock in the portfolio
-        for stock in df.columns:
-            fig.add_trace(go.Scatter(
-                x=df.index,
-                y=df[stock],
-                mode='lines',
-                stackgroup='one',  # This creates the stacked effect
-                name=stock
-            ))
-
-        fig.update_layout(
-            title='Portfolio Weights Over Time',
-            xaxis_title='Date',
-            yaxis_title='Portfolio Weights',
-            showlegend=True
-        )
 
     def plot_portfolio_value_over_time(self):
         """Plot portfolio value over time."""
@@ -384,56 +387,38 @@ class Backtest2:
         plt.savefig(f"backtests_graphs/Portfolio_Value_Evolution_with_backtest_{self.backtest_name}.png", dpi=900)
         plt.show()
 
-    def plot_weights(self, weights):
-        """Plot portfolio weights as a horizontal bar chart."""
-        if not weights:
-            print("No weights available for plotting.")
+    def plot_historical_prices(self, df):
+        """Plots historical prices from a DataFrame."""
+        
+        # Vérifiez si les données sont disponibles et non vides
+        if df.empty:
+            logging.warning("No data available to plot historical prices.")
             return
-
-        tickers = list(weights.keys())
-        weight_values = list(weights.values())
+        
+        tickers = df['ticker'].unique()  # Récupère tous les tickers uniques
         plt.figure(figsize=(12, 6))
-        plt.barh(tickers, weight_values, color='skyblue')
-        plt.title("Portfolio Weights")
-        plt.xlabel("Weight (%)")
-        plt.ylabel("Ticker")
+
+        # Plot pour chaque ticker dans l'univers
+        for ticker in tickers:
+            ticker_data = df[df['ticker'] == ticker]
+            
+            if not ticker_data.empty:  # Vérifiez si des données existent pour ce ticker
+                plt.plot(ticker_data['Date'], ticker_data['Adj Close'], label=ticker)
+            else:
+                logging.warning(f"No data available for ticker {ticker}.")
+
+        # Ajouter le titre et les étiquettes
+        plt.title("Historical Prices of Selected Stocks")
+        plt.xlabel("Date")
+        plt.ylabel("Adjusted Close Price ($)")
+        plt.legend()
+
+        # Affichez le graphique
         plt.show()
 
-        # Save the figure to the 'backtests_graphs' folder
+        # Sauvegardez dans le répertoire 'backtests_graphs' si nécessaire
         if not os.path.exists('backtests_graphs'):
             os.makedirs('backtests_graphs')
 
-        plt.savefig(f"backtests_graphs/Portfolio_Weights_{self.backtest_name}.png", dpi=900)
-        plt.show()
-
-    def plot_historical_prices(self, df):
-        """Plots historical prices from a DataFrame."""
-        tickers = df.columns 
-        plt.figure(figsize=(12, 6))
-
-        for ticker in tickers:
-            plt.plot(df.index, df[ticker], label=ticker)
-
-        plt.title("Historical Prices")
-        plt.xlabel("Date")
-        plt.ylabel("Adjusted Close Price")
-        plt.legend()
-        plt.show()
-
-        # Save the figure to the 'backtests_graphs' folder
         plt.savefig(f"backtests_graphs/Historical_Prices_{self.backtest_name}.png", dpi=900)
-        plt.show()
-
-    def plot_portfolio_allocation(self, portfolio):
-        """Plot the portfolio allocation as a pie chart."""
-        labels = list(portfolio.keys())
-        sizes = [position.quantity for position in portfolio.values()]
-        plt.figure(figsize=(8, 8))
-        plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
-        plt.title("Portfolio Allocation")
-        plt.axis('equal')  
-        plt.show()
-
-        # Save the figure to the 'backtests_graphs' folder
-        plt.savefig(f"backtests_graphs/Portfolio_Allocation_{self.backtest_name}.png", dpi=900)
         plt.show()
