@@ -144,12 +144,21 @@ def analyze_all_transactions(backtest_instance):
                 "Average Buy Price": avg_buy_price,
                 "Average Sell Price": avg_sell_price
             })
-        
+
+
+            plt.figure(figsize=(6, 6))
+            plt.pie([total_bought, total_sold], labels=["Bought", "Sold"], autopct='%1.1f%%', startangle=90, colors=['green', 'red'])
+            plt.title(f"Buy and Sell Distribution for {ticker}")
+            plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+            plt.savefig(f"backtests_graphs/Buy_and_Sell/{ticker}_Buy_Sell_Distribution.png")
+            plt.show()
+
+
         # Convertir les résultats en DataFrame et les enregistrer dans un fichier CSV
         stats_df = pd.DataFrame(stats_list)
         stats_df.to_csv('backtest_stats/transaction_analysis.csv', index=False)
         print(stats_df)
-        print(f"Transaction analysis saved to 'backtest_stats/transaction_analysis.csv'", flush=True)
+        print(f"Transaction analysis saved to 'backtest_stats/transaction_analysis_.csv'", flush=True)
 
     else:
         print(f"Le fichier de backtest {transaction_log_path} n'existe pas.", flush=True)
