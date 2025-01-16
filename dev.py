@@ -37,15 +37,10 @@ backtest = Backtest(
 # Run the backtest
 backtest.run_backtest()
 
-# Instancier le visualiseur de portefeuille
-#visualizer = PortfolioVisualizer(data=backtest.portfolio_values)
-#visualizer.plot_historical_prices(df)
-#visualizer.plot_var()
+#backtest.plot_portfolio_weights(backtest.initial_date, backtest.final_date)
+
 analyze_all_transactions(backtest)
 
-backtest.save_statistics_to_file()
-backtest.plot_portfolio_value_over_time(portfolio_values_df)  
-backtest.plot_cumulative_return_over_time(portfolio_values_df)
 
 # Load the blockchain to check the results
 block_chain = load_blockchain('backtest')
