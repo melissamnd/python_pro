@@ -27,15 +27,19 @@ class StopLoss_new(StopLoss):
     threshold: float
 
     def __post_init__(self):
-        # Demander à l'utilisateur de définir le seuil si ce n'est pas passé
+        #Ask user for the stop loss number
         if not hasattr(self, 'threshold') or self.threshold is None:
             self.threshold = float(input("Enter the stop-loss threshold (e.g., 0.1 for 10% loss): "))
         
     def trigger_stop_loss(self, t: datetime, portfolio: dict, prices: dict, broker: 'Broker'):
+        if not isinstance(broker.positions, dict):
+            logging.error(f"Expected broker.positions to be a dictionary, but got {type(broker.positions)}")
+            return  # Exit the function if it's not a dictionary
+
         for ticker, position in list(broker.positions.items()):
             entry_price = broker.entry_prices[ticker]
             current_price = prices.get(ticker)
-            
+
             if current_price is None:
                 logging.warning(f"Price for {ticker} not available on {t}")
                 continue
@@ -46,53 +50,37 @@ class StopLoss_new(StopLoss):
                 logging.info(f"Stop loss triggered for {ticker} at {t}. Selling all shares.")
                 broker.sell(ticker, position.quantity, current_price, t)
 
-class Broker_new(Broker): 
+class Broker_new(Broker):
 # Modifying the buy and sell functions from pybacktestchain.broker to add new conditions : max daily trades and max exposure.  
 # In addition, we add a function that count the number of daily trades and check if we respect the new condition.
+
+    def __init__(self, cash, verbose=True, max_daily_trades=10, **kwargs):
+        super().__init__(cash, verbose, **kwargs)
+        self.max_daily_trades = max_daily_trades  
+        self.positions = {}
 
     def get_daily_trade_count(self, date: datetime):
         """Returns the number of trades already executed on the given date."""
         daily_trades = self.transaction_log[self.transaction_log['Date'] == date]
         return len(daily_trades)
 
-    def get_total_portfolio_value(self, market_prices: dict):
+    def get_total_portfolio_value(self):
         """Calculate the total portfolio value based on the current market prices."""
         total_value = self.cash
+        prices = self.get_current_prices()  # Use the adapted method to get current prices
         for ticker, position in self.positions.items():
-            total_value += position.quantity * market_prices[ticker]
+            total_value += position.quantity * prices.get(ticker, 0)  # Use current prices
         return total_value
 
-    def buy(self, ticker: str, quantity: int, price: float, date: datetime, market_prices: dict):
-        """Executes a buy order for the specified ticker with additional constraints based on quantity."""
-        if quantity > self.max_single_stock_trade:
-            if self.verbose:
-                logging.warning(
-                    f"Cannot execute buy for {ticker}. Maximum allowed trade quantity is {self.max_single_stock_trade}."
-                )
-            return
-
+    def buy(self, ticker: str, quantity: int, price: float, date: datetime):
         total_cost = price * quantity
-        total_portfolio_value = self.get_total_portfolio_value(market_prices)
 
         # Check if daily trades max is respected
         daily_trades_for_ticker = self.transaction_log[(self.transaction_log['Date'] == date) & (self.transaction_log['Ticker'] == ticker)]
-        if len(daily_trades_for_ticker) >= 1:  # check for that specific ticker
+        if len(daily_trades_for_ticker) >= 1:  # Check for that specific ticker
             if self.verbose:
                 logging.warning(
                     f"Cannot execute buy for {ticker} on {date}. Maximum daily trades limit ({self.max_daily_trades}) reached for this ticker."
-                )
-            return
-
-        # Check if the purchase respects the max exposure constraint
-        current_value = self.positions.get(ticker, Position(ticker, 0, 0)).quantity * price
-        proposed_value = current_value + total_cost
-        max_allowed_value = total_portfolio_value * self.max_exposure
-
-        if proposed_value > max_allowed_value:
-            if self.verbose:
-                logging.warning(
-                    f"Cannot buy {quantity} shares of {ticker} due to max exposure limit. "
-                    f"Proposed value: {proposed_value}, Max allowed: {max_allowed_value}"
                 )
             return
 
@@ -119,14 +107,6 @@ class Broker_new(Broker):
         self.entry_prices[ticker] = price
 
     def sell(self, ticker: str, quantity: int, price: float, date: datetime):
-        """Executes a sell order for the specified ticker with additional constraints based on quantity."""
-        if quantity > self.max_single_stock_trade:
-            if self.verbose:
-                logging.warning(
-                    f"Cannot execute sell for {ticker}. Maximum allowed trade quantity is {self.max_single_stock_trade}."
-                )
-            return
-
         if ticker in self.positions and self.positions[ticker].quantity >= quantity:
             # Check if max daily trades limit is reached
             if self.get_daily_trade_count(date) >= self.max_daily_trades:
@@ -258,7 +238,7 @@ class Backtest2:
     risk_model: type = StopLoss
     verbose: bool = True
     name_blockchain: str = 'backtest'
-    broker = Broker(cash=initial_cash, verbose=verbose)
+    broker = Broker_new(cash=initial_cash, verbose=verbose)
 
     def __post_init__(self):
         from src.python_pro.Interactive_inputs import get_stop_loss_threshold
@@ -268,13 +248,16 @@ class Backtest2:
         self.stop_loss_threshold = get_stop_loss_threshold()
         self.broker.initialize_blockchain(self.name_blockchain)
         self.backtest_name = generate_random_name()
-        
+
+        # Initialize weights and portfolio_values
+        self.weights = {}
+        self.portfolio_values = []
 
     def run_backtest(self):
+        from python_pro.new_broker import Broker_new
         logging.info(f"Running backtest from {self.initial_date} to {self.final_date}.")
         logging.info(f"Retrieving price data for universe: {self.universe}")
         
-        # Pass the custom stop-loss threshold to the StopLoss class
         self.risk_model = self.risk_model(self.stop_loss_threshold)
         
         # Convert dates to strings
@@ -289,22 +272,18 @@ class Backtest2:
 
         # Create the Information object
         info = self.information_class(s=self.s,
-                                      data_module=data_module,
-                                      time_column=self.time_column,
-                                      company_column=self.company_column,
-                                      adj_close_column=self.adj_close_column)
+                                    data_module=data_module,
+                                    time_column=self.time_column,
+                                    company_column=self.company_column,
+                                    adj_close_column=self.adj_close_column)
 
-        # Initialize a DataFrame to store portfolio values
-        portfolio_values = []
-        
         # Run the backtest
         for t in pd.date_range(start=self.initial_date, end=self.final_date, freq='D'):
-            
             if self.risk_model is not None:
                 portfolio = info.compute_portfolio(t, info.compute_information(t))
                 prices = info.get_prices(t)
                 self.risk_model.trigger_stop_loss(t, portfolio, prices, self.broker)
-           
+        
             if self.rebalance_flag.time_to_rebalance(t):
                 logging.info("-----------------------------------")
                 logging.info(f"Rebalancing portfolio at {t}")
@@ -313,6 +292,20 @@ class Backtest2:
                 prices = info.get_prices(t)
                 self.broker.execute_portfolio(portfolio, prices, t)
 
+            if prices:
+                portfolio_value = self.broker.get_portfolio_value(prices)
+                self.portfolio_values.append({'Date': t, 'PortfolioValue': portfolio_value})
+
+        # Save the portfolio values to a DataFrame
+        portfolio_values_df = pd.DataFrame(self.portfolio_values)
+
+        # Calculate portfolio returns and add them as a new column
+        portfolio_values_df['PortfolioReturn'] = portfolio_values_df['PortfolioValue'].pct_change()
+        # Calculate cumulative returns
+        portfolio_values_df['CumulativeReturn'] = (1 + portfolio_values_df['PortfolioReturn']).cumprod() - 1
+
+        # Print the DataFrame directly
+        print(portfolio_values_df)
 
         logging.info(f"Backtest completed. Final portfolio value: {self.broker.get_portfolio_value(info.get_prices(self.final_date))}")
         df = self.broker.get_transaction_log()
@@ -326,3 +319,121 @@ class Backtest2:
 
         # Store the backtest results in the blockchain
         self.broker.blockchain.add_block(self.backtest_name, df.to_string())
+
+        # Now plot and save the graphs
+        self.plot_portfolio_value_over_time()
+        self.plot_weights(self.weights)
+        self.plot_historical_prices(df)
+        self.plot_portfolio_allocation(self.broker.positions)
+
+    def plot_portfolio_weights(self, start_date, end_date):
+        dates = pd.date_range(start=start_date, end=end_date, freq='M')
+        portfolio_weights = []
+        stock_list = None
+
+        info = self.information_class(
+            s=self.s,
+            data_module=DataModule(get_stocks_data(self.universe, '2015-01-01', '2023-01-01')),
+            time_column=self.time_column,
+            company_column=self.company_column,
+            adj_close_column=self.adj_close_column
+        )
+
+        for date in dates:
+            information_set = info.compute_information(date)
+            portfolio = info.compute_portfolio(date, information_set)
+            portfolio_weights.append(portfolio)
+            if stock_list is None:
+                stock_list = list(portfolio.keys())
+
+        df = pd.DataFrame(portfolio_weights, index=dates, columns=stock_list).fillna(0)
+
+        # Create a Plotly figure
+        fig = go.Figure()
+
+        # Add a trace for each stock in the portfolio
+        for stock in df.columns:
+            fig.add_trace(go.Scatter(
+                x=df.index,
+                y=df[stock],
+                mode='lines',
+                stackgroup='one',  # This creates the stacked effect
+                name=stock
+            ))
+
+        fig.update_layout(
+            title='Portfolio Weights Over Time',
+            xaxis_title='Date',
+            yaxis_title='Portfolio Weights',
+            showlegend=True
+        )
+
+    def plot_portfolio_value_over_time(self):
+        """Plot portfolio value over time."""
+        plt.figure(figsize=(12, 6))
+        plt.plot([p['Date'] for p in self.portfolio_values], [p['PortfolioValue'] for p in self.portfolio_values], label="Portfolio Value")
+        plt.title("Portfolio Value Over Time")
+        plt.xlabel("Time")
+        plt.ylabel("Portfolio Value ($)")
+        plt.legend()
+
+        # Save the figure to the 'backtests_graphs' folder
+        if not os.path.exists('backtests_graphs'):
+            os.makedirs('backtests_graphs')
+
+        plt.savefig(f"backtests_graphs/Portfolio_Value_Evolution_with_backtest_{self.backtest_name}.png", dpi=900)
+        plt.show()
+
+    def plot_weights(self, weights):
+        """Plot portfolio weights as a horizontal bar chart."""
+        if not weights:
+            print("No weights available for plotting.")
+            return
+
+        tickers = list(weights.keys())
+        weight_values = list(weights.values())
+        plt.figure(figsize=(12, 6))
+        plt.barh(tickers, weight_values, color='skyblue')
+        plt.title("Portfolio Weights")
+        plt.xlabel("Weight (%)")
+        plt.ylabel("Ticker")
+        plt.show()
+
+        # Save the figure to the 'backtests_graphs' folder
+        if not os.path.exists('backtests_graphs'):
+            os.makedirs('backtests_graphs')
+
+        plt.savefig(f"backtests_graphs/Portfolio_Weights_{self.backtest_name}.png", dpi=900)
+        plt.show()
+
+    def plot_historical_prices(self, df):
+        """Plots historical prices from a DataFrame."""
+        tickers = df.columns 
+        plt.figure(figsize=(12, 6))
+
+        for ticker in tickers:
+            plt.plot(df.index, df[ticker], label=ticker)
+
+        plt.title("Historical Prices")
+        plt.xlabel("Date")
+        plt.ylabel("Adjusted Close Price")
+        plt.legend()
+        plt.show()
+
+        # Save the figure to the 'backtests_graphs' folder
+        plt.savefig(f"backtests_graphs/Historical_Prices_{self.backtest_name}.png", dpi=900)
+        plt.show()
+
+    def plot_portfolio_allocation(self, portfolio):
+        """Plot the portfolio allocation as a pie chart."""
+        labels = list(portfolio.keys())
+        sizes = [position.quantity for position in portfolio.values()]
+        plt.figure(figsize=(8, 8))
+        plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
+        plt.title("Portfolio Allocation")
+        plt.axis('equal')  
+        plt.show()
+
+        # Save the figure to the 'backtests_graphs' folder
+        plt.savefig(f"backtests_graphs/Portfolio_Allocation_{self.backtest_name}.png", dpi=900)
+        plt.show()
