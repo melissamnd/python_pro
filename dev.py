@@ -1,6 +1,6 @@
 #### MY DEV.PY FILE
 
-from pybacktestchain.data_module import FirstTwoMoments
+from pybacktestchain.data_module import FirstTwoMoments, get_stocks_data
 #from pybacktestchain.broker import StopLoss -- we will use our own StopLoss function
 from pybacktestchain.blockchain import load_blockchain
 from datetime import datetime
@@ -41,3 +41,9 @@ block_chain = load_blockchain('backtest')
 print(str(block_chain)) # Print the blockchain content (backtest results)
 # Check if the blockchain is valid
 print(block_chain.is_valid())
+
+# Generate and save the graphs after the backtest
+backtest.plot_portfolio_value_over_time()  # Plot portfolio value
+#backtest.plot_weights(backtest.weights, backtest.universe)  # Plot portfolio weights
+backtest.plot_historical_prices(get_stocks_data(tickers,start_date,end_date))  # Plot historical prices
+backtest.plot_portfolio_allocation(backtest.broker.positions)  # Plot portfolio allocation
