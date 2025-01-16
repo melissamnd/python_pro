@@ -42,8 +42,9 @@ print(str(block_chain)) # Print the blockchain content (backtest results)
 # Check if the blockchain is valid
 print(block_chain.is_valid())
 
+analyze_all_transactions(backtest)
 # Generate and save the graphs after the backtest
 backtest.plot_portfolio_value_over_time()  # Plot portfolio value
 #backtest.plot_weights(backtest.weights, backtest.universe)  # Plot portfolio weights
-backtest.plot_historical_prices(get_stocks_data(tickers,start_date,end_date))  # Plot historical prices
-backtest.plot_portfolio_allocation(backtest.broker.positions)  # Plot portfolio allocation
+backtest.plot_historical_prices()  # Plot historical prices
+#backtest.plot_portfolio_allocation(backtest.broker.positions)  # Plot portfolio allocation
