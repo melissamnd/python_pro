@@ -80,6 +80,13 @@ class Broker_new(Broker):
     def buy(self, ticker: str, quantity: int, price: float, date: datetime):
         total_cost = price * quantity
 
+        # New condition: Check if the price is below a specific threshold before buying
+        price_threshold = 200  # Example threshold (you can adjust this value)
+        if price > price_threshold:
+            if self.verbose:
+                logging.warning(f"Cannot buy {ticker} on {date}. Price is above the threshold of {price_threshold}.")
+            return
+
         # Check if daily trades max is respected
         daily_trades_for_ticker = self.transaction_log[(self.transaction_log['Date'] == date) & (self.transaction_log['Ticker'] == ticker)]
         if len(daily_trades_for_ticker) >= 1:  # Check for that specific ticker
@@ -418,17 +425,6 @@ class Backtest():
         # Affichage du DataFrame
         print(portfolio_values_df)
 
-        # Calcul et affichage des statistiques
-        if 'PortfolioReturn' in portfolio_values_df.columns:
-            valid_returns = portfolio_values_df['PortfolioReturn'].dropna()
-            avg_return = valid_returns.mean()
-            std_dev = valid_returns.std()
-
-            print("Portfolio Return Statistics:")
-            print(f"Average Return: {avg_return:.6f}")
-            print(f"Standard Deviation: {std_dev:.6f}")
-
-
         logging.info(f"Backtest completed. Final portfolio value: {self.broker.get_portfolio_value(info.get_prices(self.final_date))}")
         df = self.broker.get_transaction_log()
 
@@ -459,17 +455,6 @@ class Backtest():
             os.makedirs('backtests_graphs')
 
         plt.savefig(f"backtests_graphs/Portfolio_value/Portfolio_Value_Evolution_with_backtest_{self.backtest_name}.png", dpi=900)
-        plt.show()
-
-        """Plot cumulative return over time."""
-        plt.figure(figsize=(12, 6))
-        plt.plot(portfolio_values_df['Date'], portfolio_values_df['CumulativeReturn'], label="Portfolio Value")
-        plt.title("Cumulative Return")
-        plt.xlabel("Time")
-        plt.ylabel("Cumulative Return (%)")
-        plt.legend()
-
-        plt.savefig(f"backtests_graphs/Cumulative_return/Cumulative_return_with_backtest_{self.backtest_name}.png", dpi=900)
         plt.show()
 
     def plot_portfolio_weights(self, start_date, end_date):

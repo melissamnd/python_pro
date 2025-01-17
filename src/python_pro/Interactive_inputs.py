@@ -142,6 +142,43 @@ def get_target_return():
         raise ValueError("No target return provided!")
     return target_return
 
+def strategy_choice():
+    """Select a Strategy for Asset Allocation using input box."""
+    
+    # Create a root window (it will not be shown)
+    root = tk.Tk()
+    root.withdraw()  # Hide the main tkinter window
+    
+    # Create the prompt dialog
+    choice = simpledialog.askstring(
+        "Strategy Selection", 
+        "Which strategy would you like to choose?\n"
+        "1 - First Two Moments Portfolio (No Short Selling)\n"
+        "2 - Long Short Portfolio (With Short Selling)\n"
+        "Please enter the number of your choice (1 or 2):"
+    )
+    
+    # Initialize strategy and description
+    strategy = None
+    strategy_name = None
+
+    if choice == '1':
+        from pybacktestchain.data_module import FirstTwoMoments
+        strategy = FirstTwoMoments
+        strategy_name = "First Two Moments Portfolio (No Short Selling)"
+    elif choice == '2':
+        from src.python_pro.new_data_module import LongShortPortfolio
+        strategy = LongShortPortfolio
+        strategy_name = "Long Short Portfolio (With Short Selling)"
+    else:
+        simpledialog.messagebox.showwarning("Invalid input", "Please enter a valid choice (1 or 2).")
+        strategy, strategy_name = strategy_choice()  # Prompt again
+    
+    # Output the chosen strategy
+    print(f"You chose {strategy_name}")
+    
+    return strategy, strategy_name
+
 # Function to get the rebalancing strategy input from the user
 def get_rebalancing_strategy():
     # Import des classes nécessaires à l'intérieur de la fonction
