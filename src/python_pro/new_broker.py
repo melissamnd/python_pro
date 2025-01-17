@@ -1,4 +1,13 @@
-#### MODIFYIN AND ADDING FUNCTION TO DATA_MODULE
+#---------------------------------------------------------
+# This module modifies and adds new functions to the 
+# pybacktestchain library.
+# Key features:
+# - Custom StopLoss class with user-defined threshold 
+# - Custom Broker class with max daily trade and exposure ****2 new conditions added to "buy" ans "sell" function****
+# - Portfolio analysis tools including performance and risk metrics ****new class creation****
+# - Rebalancing strategies (weekly, monthly, quarterly) 
+# - New graphing tools for portfolio value and returns analysis ****new class creation****
+#---------------------------------------------------------
 
 import pandas as pd
 import numpy as np
@@ -17,26 +26,29 @@ from typing import Dict
 from numba import jit 
 from python_pro.Interactive_inputs import get_rebalancing_strategy, get_stocks_data, get_stock_data
 
-# Setup logging
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 from datetime import timedelta, datetime
 
 #---------------------------------------------------------
 # Modifying Classes from pybacktestchain.broker
 #---------------------------------------------------------
+    
+#- This class extends the base StopLoss class to introduce dynamic stop-loss threshold input by the user.
+#- If a position's loss exceeds the user-defined threshold, the position is sold.
 
 class StopLoss_new(StopLoss):
     threshold: float
 
     def __post_init__(self):
-        #Ask user for the stop loss number
+        
         if not hasattr(self, 'threshold') or self.threshold is None:
             self.threshold = float(input("Enter the stop-loss threshold (e.g., 0.1 for 10% loss): "))
         
     def trigger_stop_loss(self, t: datetime, portfolio: dict, prices: dict, broker: 'Broker'):
         if not isinstance(broker.positions, dict):
             logging.error(f"Expected broker.positions to be a dictionary, but got {type(broker.positions)}")
-            return  # Exit the function if it's not a dictionary
+            return 
 
         for ticker, position in list(broker.positions.items()):
             entry_price = broker.entry_prices[ticker]
@@ -46,24 +58,23 @@ class StopLoss_new(StopLoss):
                 logging.warning(f"Price for {ticker} not available on {t}")
                 continue
 
-            # Calculate the loss percentage
             loss = (current_price - entry_price) / entry_price
             if loss < -self.threshold:
                 logging.info(f"Stop loss triggered for {ticker} at {t}. Selling all shares.")
                 broker.sell(ticker, position.quantity, current_price, t)
 
 class Broker_new(Broker):
-# Modifying the buy and sell functions from pybacktestchain.broker to add new conditions : max daily trades and max exposure.  
-# In addition, we add a function that count the number of daily trades and check if we respect the new condition.
+#- Modifying the buy and sell functions from pybacktestchain.broker to add new conditions : max daily trades and max exposure.  
+#- In addition, we add a function that count the number of daily trades and check if we respect the new condition.
 
     def __init__(self, cash, verbose=True, max_daily_trades=10, **kwargs):
         super().__init__(cash, verbose, **kwargs)
         self.max_daily_trades = max_daily_trades  
         self.positions = {}
 
-        self.evolution_time = []  # Liste pour stocker les dates
-        self.evolution_nb_buy = []  # Liste pour stocker le nombre d'achats
-        self.evolution_nb_sell = []  # Liste pour stocker le nombre de ventes
+        self.evolution_time = []  
+        self.evolution_nb_buy = []  
+        self.evolution_nb_sell = []  
 
     def get_daily_trade_count(self, date: datetime):
         """Returns the number of trades already executed on the given date."""
@@ -73,9 +84,9 @@ class Broker_new(Broker):
     def get_total_portfolio_value(self):
         """Calculate the total portfolio value based on the current market prices."""
         total_value = self.cash
-        prices = self.get_current_prices()  # Use the adapted method to get current prices
+        prices = self.get_current_prices()  
         for ticker, position in self.positions.items():
-            total_value += position.quantity * prices.get(ticker, 0)  # Use current prices
+            total_value += position.quantity * prices.get(ticker, 0)  
         return total_value
 
     def buy(self, ticker: str, quantity: int, price: float, date: datetime):
@@ -88,7 +99,7 @@ class Broker_new(Broker):
                 logging.warning(f"Cannot buy {ticker} on {date}. Price is above the threshold of {price_threshold}.")
             return
 
-        # Check if daily trades max is respected
+        # New condition: Check if daily trades max is respected
         daily_trades_for_ticker = self.transaction_log[(self.transaction_log['Date'] == date) & (self.transaction_log['Ticker'] == ticker)]
         if len(daily_trades_for_ticker) >= 1:  # Check for that specific ticker
             if self.verbose:
@@ -105,7 +116,6 @@ class Broker_new(Broker):
                 )
             return
 
-        # Execute the buy order
         self.cash -= total_cost
         if ticker in self.positions:
             position = self.positions[ticker]
@@ -144,11 +154,13 @@ class Broker_new(Broker):
                 )
 
     def execute_portfolio(self, portfolio: dict, prices: dict, date: datetime):
-        nb_buy = 0  # Initialize buy counter
-        nb_sell = 0  # Initialize sell counter
+    #- This function executes the trades for the portfolio based on the generated weights and current market prices.
+    #- We added a track on the number of buy and sell transaction and calculate the value of the portfolio after executing the trades.
+
+        nb_buy = 0 
+        nb_sell = 0 
         total_value_after_execution = self.get_portfolio_value(prices)
 
-        # 1) Handle sell orders first to free up cash:
         for ticker, weight in portfolio.items():
             price = prices.get(ticker)
             if price is None:
@@ -160,16 +172,13 @@ class Broker_new(Broker):
             target_value = total_value * weight
             current_value = self.positions.get(ticker, Position(ticker, 0, 0)).quantity * price
 
-            # Calculate the difference and determine quantity to trade
             diff_value = target_value - current_value
             quantity_to_trade = int(diff_value / price)
 
-            # Execute selling
             if quantity_to_trade < 0:
                 self.sell(ticker, abs(quantity_to_trade), price, date)
-                nb_sell += 1  # Increment the sell counter
+                nb_sell += 1 
 
-        # 2) Handle buy orders:
         for ticker, weight in portfolio.items():
             price = prices.get(ticker)
             if price is None:
@@ -184,30 +193,27 @@ class Broker_new(Broker):
             diff_value = target_value - current_value
             quantity_to_trade = int(diff_value / price)
         
-            # Execute buying
             if quantity_to_trade > 0:
                 available_cash = self.get_cash_balance()
                 cost = quantity_to_trade * price
                 
                 if cost <= available_cash:
                     self.buy(ticker, quantity_to_trade, price, date)
-                    nb_buy += 1  # Increment the buy counter
+                    nb_buy += 1  
                 else:
-                    # Handle insufficient cash case
+                    
                     if self.verbose:
                         logging.warning(f"Not enough cash to buy {quantity_to_trade} of {ticker} on {date}. "
                                         f"Needed: {cost}, Available: {available_cash}")
                     
-                    # Buy as many shares as possible with available cash
+                    
                     quantity_to_trade = int(available_cash / price)
-                    if quantity_to_trade > 0:  # Ensure we can actually buy
+                    if quantity_to_trade > 0:  
                         self.buy(ticker, quantity_to_trade, price, date)
-                        nb_buy += 1  # Increment the buy counter
+                        nb_buy += 1  
 
-        # 3) Calculate total portfolio value after all trades:
         total_value_after_execution = self.get_portfolio_value(prices)
 
-        # Now update the lists for the graph
         self.evolution_time.append(date)
         self.evolution_nb_buy.append(nb_buy)
         self.evolution_nb_sell.append(nb_sell)
@@ -221,9 +227,9 @@ class Broker_new(Broker):
 #---------------------------------------------------------
 
 
-#Creation of a new class that computes different statistics to analyse the portfolio. The class includes the below functions:
-#   Computation of the performance of the portfolio
-#   Calculation or returns, mean, vol, Sharpe Ratio and VaR
+#- Creation of a new class that computes different statistics to analyse the portfolio. The class includes the below functions:
+#- Computation of the performance of the portfolio
+#- Calculation or returns, mean, vol, Sharpe Ratio and VaR
 
 
 @dataclass
@@ -267,7 +273,7 @@ class AnalysisTool:
 # Creating new classes allowing for new rebalances
 #---------------------------------------------------------
 
-# Creation of new classes to allow for more frequent rebalances : every week/month/quarter
+#- Creation of new classes to allow for more frequent rebalances : every week/month/quarter
 
 @dataclass
 class RebalanceFlag:
@@ -296,13 +302,13 @@ class EveryQuarter:
 
 
 #---------------------------------------------------------
-# Made changes to backtest function to account for modifications
+# Made changes to backtest function to account for improvements
 #---------------------------------------------------------
 
-# Allow new rebalances
-# Allow dynamic threshold
-# Allow for dynamic universe
-# Plot graphs
+#- Allow new rebalances
+#- Allow dynamic threshold
+#- Allow for dynamic universe
+#- Plot graphs
 
 @dataclass
 class Backtest():
@@ -344,17 +350,13 @@ class Backtest():
         
         self.risk_model = self.risk_model(self.stop_loss_threshold)
         
-        # Convert dates to strings
         init_ = self.initial_date.strftime('%Y-%m-%d')
         final_ = self.final_date.strftime('%Y-%m-%d')
         
-        # Retrieve stock data
         df = get_stocks_data(self.universe, init_, final_)
-
-        # Initialize the DataModule
+        
         data_module = DataModule(df)
-
-        # Create the Information object
+        
         info = self.information_class(s=self.s,
                                     data_module=data_module,
                                     time_column=self.time_column,
@@ -363,7 +365,7 @@ class Backtest():
 
         portfolio_values = []
 
-        # Run the backtest
+        
         for t in pd.date_range(start=self.initial_date, end=self.final_date, freq='D'):
             if self.risk_model is not None:
                 portfolio = info.compute_portfolio(t, info.compute_information(t))
@@ -396,17 +398,15 @@ class Backtest():
         analysis_results = analysis_tool.analyze()
         logging.info(f"Analysis results: {analysis_results}")
 
-        # Créer le dossier 'backtests_stats' s'il n'existe pas
         if not os.path.exists('backtests_stats'):
             os.makedirs('backtests_stats')
 
-        # Chemin du fichier texte pour enregistrer les résultats
         file_path = f"backtests_stats/analysis_results_{self.backtest_name}.txt"
 
         try:
-            # Ouvrir le fichier en mode écriture
+           
             with open(file_path, 'w') as file:
-                # Écrire les résultats de l'analyse dans le fichier
+                
                 for key, value in analysis_results.items():
                     file.write(f"{key}: {value}\n")
             
@@ -414,34 +414,25 @@ class Backtest():
         except Exception as e:
             logging.error(f"An error occurred while saving analysis results: {e}")
 
-        # Continuer le reste du backtest...
-        # Enregistrer les valeurs du portefeuille dans un DataFrame
+        
         portfolio_values_df = pd.DataFrame(portfolio_values)
 
-        # Calcul des rendements du portefeuille et ajout d'une nouvelle colonne
+        
         portfolio_values_df['PortfolioReturn'] = portfolio_values_df['PortfolioValue'].pct_change()
-        # Calcul des rendements cumulés
+        
         portfolio_values_df['CumulativeReturn'] = (1 + portfolio_values_df['PortfolioReturn']).cumprod() - 1
 
-        # Affichage du DataFrame
         print(portfolio_values_df)
 
         logging.info(f"Backtest completed. Final portfolio value: {self.broker.get_portfolio_value(info.get_prices(self.final_date))}")
         df = self.broker.get_transaction_log()
 
-        # Create the backtests folder if it does not exist
         if not os.path.exists('backtests'):
             os.makedirs('backtests')
 
-        # Save the transaction log to CSV
         df.to_csv(f"backtests/{self.backtest_name}.csv")
 
-        # Store the backtest results in the blockchain
         self.broker.blockchain.add_block(self.backtest_name, df.to_string())
-
-        # Now plot and save the graphs
-        #self.plot_portfolio_value_over_time(portfolio_values_df)
-        #self.plot_cumulative_return_over_time(portfolio_values_df)
 
         """Plot portfolio value over time."""
         plt.figure(figsize=(12, 6))
@@ -451,7 +442,6 @@ class Backtest():
         plt.ylabel("Portfolio Value ($)")
         plt.legend()
 
-        # Save the figure to the 'backtests_graphs' folder
         if not os.path.exists('backtests_graphs'):
             os.makedirs('backtests_graphs')
 

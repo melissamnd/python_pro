@@ -1,3 +1,15 @@
+#---------------------------------------------------------
+# This module provides functions for analyzing and visualizing the results of a backtest.
+# It includes the following functions:
+# - plot_historical_prices: Plots the historical adjusted closing prices of the selected stocks.
+# - plot_var: Plots the Value at Risk (VaR) over time for the portfolio.
+# - calculate_returns: Calculates the portfolio's returns based on its historical value.
+# - calculate_var: Calculates the Value at Risk (VaR) based on the portfolio's returns.
+# - analyze_all_transactions: Analyzes all buy and sell transactions for each ticker, calculating 
+#   the total quantity bought/sold, average buy/sell prices, and visualizes the buy/sell distribution.
+#---------------------------------------------------------
+
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -22,33 +34,28 @@ class PortfolioVisualizer:
     def plot_historical_prices(self, df):
         """Plots historical prices from a DataFrame."""
         
-        # Vérifiez si les données sont disponibles et non vides
         if df.empty:
             logging.warning("No data available to plot historical prices.")
             return
         
-        tickers = df['ticker'].unique()  # Récupère tous les tickers uniques
+        tickers = df['ticker'].unique()  
         plt.figure(figsize=(12, 6))
 
-        # Plot pour chaque ticker dans l'univers
         for ticker in tickers:
             ticker_data = df[df['ticker'] == ticker]
             
-            if not ticker_data.empty:  # Vérifiez si des données existent pour ce ticker
+            if not ticker_data.empty: 
                 plt.plot(ticker_data['Date'], ticker_data['Adj Close'], label=ticker)
             else:
                 logging.warning(f"No data available for ticker {ticker}.")
 
-        # Ajouter le titre et les étiquettes
         plt.title("Historical Prices of Selected Stocks")
         plt.xlabel("Date")
         plt.ylabel("Adjusted Close Price ($)")
         plt.legend()
 
-        # Affichez le graphique
         plt.show()
 
-        # Sauvegardez dans le répertoire 'backtests_graphs' si nécessaire
         if not os.path.exists('backtests_graphs'):
             os.makedirs('backtests_graphs')
 
@@ -58,9 +65,8 @@ class PortfolioVisualizer:
     def plot_var(self):
         """Plot Value at Risk (VaR) over time"""
         returns = self.calculate_returns()
-        var = [self.calculate_var(confidence_level=0.95)] * len(returns)  # VaR constant over time for simplicity
+        var = [self.calculate_var(confidence_level=0.95)] * len(returns)  
 
-        # Create a plot of VaR
         plt.figure(figsize=(12, 6))
         plt.plot(range(len(returns)), var, label="VaR (95% confidence)", color="red")
         plt.title("Value at Risk (VaR) Over Time")
@@ -68,7 +74,6 @@ class PortfolioVisualizer:
         plt.ylabel("VaR")
         plt.legend()
 
-        # Save the figure to the 'backtests_graphs' folder
         if not os.path.exists('backtests_graphs'):
             os.makedirs('backtests_graphs')
         
@@ -88,56 +93,44 @@ class PortfolioVisualizer:
     
 def analyze_all_transactions(backtest_instance):
     """
-    Analyse toutes les transactions (achats et ventes) pour chaque action présente
-    dans le fichier généré par le backtest.
+    Analyse all the transaction for every ticker chosen by the user.
     """
-    # Récupérer le nom du fichier de backtest généré
-    backtest_name = backtest_instance.backtest_name  # Nom généré dans l'instance de Backtest
 
-    # Définir le chemin complet du fichier CSV
+    backtest_name = backtest_instance.backtest_name  
+
     transaction_log_path = f'backtests/{backtest_name}.csv'
         
-    # Vérifier si le fichier existe avant de le lire
     if os.path.exists(transaction_log_path):
-        # Lire le fichier CSV du backtest
+        
         df = pd.read_csv(transaction_log_path)
             
-        # Créer le dossier backtest_stats s'il n'existe pas déjà
         if not os.path.exists('backtest_stats'):
             os.makedirs('backtest_stats')
 
-        stats_list = []  # Liste pour stocker les résultats à sauvegarder dans un fichier
+        stats_list = []  
             
-        # Récupérer tous les tickers uniques
         tickers = df['Ticker'].unique()
         print(f"Unique tickers found: {tickers}")
 
-        # Analyser chaque ticker
         for ticker in tickers:
             print(f"\nAnalyzing transactions for {ticker}:", flush=True)
                 
-            # Filtrer les transactions pour ce ticker
             ticker_df = df[df['Ticker'] == ticker]
                 
-            # Filtrer les achats et les ventes
             buy_ticker = ticker_df[ticker_df['Action'] == 'BUY']
             sell_ticker = ticker_df[ticker_df['Action'] == 'SELL']
 
-            # Calculer la quantité totale achetée et vendue
             total_bought = buy_ticker['Quantity'].sum()
             total_sold = sell_ticker['Quantity'].sum()
 
-            # Calculer le prix moyen d'achat et de vente
             avg_buy_price = (buy_ticker['Quantity'] * buy_ticker['Price']).sum() / total_bought if total_bought > 0 else 0
             avg_sell_price = (sell_ticker['Quantity'] * sell_ticker['Price']).sum() / total_sold if total_sold > 0 else 0
 
-            # Affichage des résultats pour ce ticker
             print(f"Total {ticker} bought: {total_bought} shares", flush=True)
             print(f"Total {ticker} sold: {total_sold} shares", flush=True)
             print(f"Average buy price for {ticker}: ${avg_buy_price:.2f}", flush=True)
             print(f"Average sell price for {ticker}: ${avg_sell_price:.2f}", flush=True)
 
-            # Ajouter les résultats à la liste stats_list pour les sauvegarder dans un fichier
             stats_list.append({
                 "Ticker": ticker,
                 "Total Bought": total_bought,
@@ -150,12 +143,11 @@ def analyze_all_transactions(backtest_instance):
             plt.figure(figsize=(6, 6))
             plt.pie([total_bought, total_sold], labels=["Bought", "Sold"], autopct='%1.1f%%', startangle=90, colors=['green', 'red'])
             plt.title(f"Buy and Sell Distribution for {ticker}")
-            plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+            plt.axis('equal') 
             plt.savefig(f"backtests_graphs/Buy_and_Sell/{ticker}_Buy_Sell_Distribution.png")
             plt.show()
 
 
-        # Convertir les résultats en DataFrame et les enregistrer dans un fichier CSV
         stats_df = pd.DataFrame(stats_list)
         stats_df.to_csv('backtest_transac_stats/transaction_analysis.csv', index=False)
         print(stats_df)

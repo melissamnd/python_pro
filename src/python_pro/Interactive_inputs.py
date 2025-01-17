@@ -1,5 +1,13 @@
-### MY NEW MODULE FUNCTIONS MODIFYING EXISTING FUNCTIONS AND ADDING NEW FUNCTIONS
-### ONLY USER INTERACTIVE FUNCTIONS TO GET ALL DYNAMIC INPUTS
+#---------------------------------------------------------
+# This module provides interactive functions for user input.
+# It includes the following functions:
+# - get date inputs from the user
+# - get stock tickers from the user
+# - get the selected asset allocation strategy from the user
+# - get the stop-loss threshold input from the user
+# - get the initial cash amount from the user
+# - get the rebalance strategy from the user
+#---------------------------------------------------------
 
 import tkinter as tk
 import pandas as pd
@@ -39,29 +47,25 @@ class Data_module2():
         for ticker in tickers:
             df = Data_module2.get_stock_data(ticker, start_date, end_date)
             if not df.empty:
-                df = df[['Date', 'Adj Close']]  # Keep only 'Date' and 'Adj Close'
-                df['Ticker'] = ticker  # Add a column for ticker
+                df = df[['Date', 'Adj Close']]  
+                df['Ticker'] = ticker  
                 dfs.append(df)
         
-        # Combine all dataframes into one
         all_data = pd.concat(dfs)
         
-        # Pivot the data so tickers are columns and dates are rows
         all_data = all_data.pivot(index='Date', columns='Ticker', values='Adj Close')
         
-        # Drop rows with NaN values
         all_data = all_data.dropna(how='all')
         
         return all_data
 
 
-# Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Function to get stock inputs
 def get_stock_inputs():
     root = tk.Tk()
-    root.withdraw()  # Hide the main tkinter window
+    root.withdraw()  
     num_stocks = simpledialog.askinteger("Number of Stocks", "How many stocks do you want to enter?")
     
     if not num_stocks or num_stocks <= 0:
@@ -91,65 +95,64 @@ def get_stock_inputs():
 
 # Function to get date inputs via a userform
 def get_date_inputs():
-    # Fonction pour demander la saisie des dates via une input box (fenêtre graphique)
+    
     root = tk.Tk()
-    root.withdraw()  # Cacher la fenêtre principale de Tkinter
+    root.withdraw()  
 
-    # Demander la date de début
+    
     start_date_str = simpledialog.askstring("Start Date", "Please enter the start date (YYYY-MM-DD):")
     if not start_date_str:
-        return None, None  # Si l'utilisateur annule ou ne rentre rien, on retourne None
+        return None, None 
 
     try:
-        # Valider et convertir la date de début
+       
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
     except ValueError:
         messagebox.showerror("Invalid Date", "Invalid start date format. Please use YYYY-MM-DD.")
-        return None, None  # Retourner None en cas d'erreur
+        return None, None  
 
-    # Demander la date de fin
     end_date_str = simpledialog.askstring("End Date", "Please enter the end date (YYYY-MM-DD):")
     if not end_date_str:
-        return None, None  # Si l'utilisateur annule ou ne rentre rien, on retourne None
+        return None, None 
 
     try:
-        # Valider et convertir la date de fin
+        
         end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
     except ValueError:
         messagebox.showerror("Invalid Date", "Invalid end date format. Please use YYYY-MM-DD.")
-        return None, None  # Retourner None en cas d'erreur
+        return None, None 
 
     if start_date > end_date:
         messagebox.showerror("Invalid Date Range", "Start date must be before end date!")
-        return None, None  # Retourner None en cas d'erreur
+        return None, None 
     
     return start_date, end_date
-    
+
+# Function to get the target return input from the user
 def get_target_return():
     """
     Prompt the user to input a target return using a simple dialog box.
     Returns the target return as a float.
     """
     root = tk.Tk()
-    root.withdraw()  # Hide the main Tkinter window
+    root.withdraw() 
     target_return = simpledialog.askfloat(
         "Target Return", 
         "Enter the target return (e.g., 0.1 for 10%):",
-        minvalue=0.0, maxvalue=1.0  # Optional bounds for input
+        minvalue=0.0, maxvalue=1.0  
     )
-    root.destroy()  # Close the Tkinter window
+    root.destroy() 
     if target_return is None:
         raise ValueError("No target return provided!")
     return target_return
 
+# Function to get the asset allocation strategy choice from the user
 def strategy_choice():
     """Select a Strategy for Asset Allocation using input box."""
     
-    # Create a root window (it will not be shown)
     root = tk.Tk()
-    root.withdraw()  # Hide the main tkinter window
+    root.withdraw() 
     
-    # Create the prompt dialog
     choice = simpledialog.askstring(
         "Strategy Selection", 
         "Which strategy would you like to choose?\n"
@@ -158,7 +161,6 @@ def strategy_choice():
         "Please enter the number of your choice (1 or 2):"
     )
     
-    # Initialize strategy and description
     strategy = None
     strategy_name = None
 
@@ -174,81 +176,71 @@ def strategy_choice():
         simpledialog.messagebox.showwarning("Invalid input", "Please enter a valid choice (1 or 2).")
         strategy, strategy_name = strategy_choice()  # Prompt again
     
-    # Output the chosen strategy
     print(f"You chose {strategy_name}")
     
     return strategy, strategy_name
 
 # Function to get the rebalancing strategy input from the user
 def get_rebalancing_strategy():
-    # Import des classes nécessaires à l'intérieur de la fonction
+
     from src.python_pro.new_broker import EndOfWeek, EndOfMonth, EveryQuarter
 
-    # Création de la fenêtre tkinter pour demander la stratégie de rééquilibrage
     root = tk.Tk()
-    root.withdraw()  # Masquer la fenêtre principale de Tkinter
+    root.withdraw() 
 
-    # Demander à l'utilisateur de choisir une stratégie
     choices = ["End of Week", "End of Month", "Every Quarter"]
     
     rebalancing_strategy = simpledialog.askstring("Rebalancing Strategy", 
                                                 "Choose rebalancing strategy: End of Week, End of Month, or Every Quarter")
     
-    # Valider le choix de l'utilisateur
     if rebalancing_strategy not in choices:
         print("Invalid choice. Please choose one of the following strategies: End of Week, End of Month, or Every Quarter.")
         return None
 
-    # Retourner la classe appropriée en fonction de la stratégie choisie
     if rebalancing_strategy == "End of Week":
-        return EndOfWeek  # Retourne la classe, pas la chaîne de caractères
+        return EndOfWeek  
     elif rebalancing_strategy == "End of Month":
         return EndOfMonth
     elif rebalancing_strategy == "Every Quarter":
         return EveryQuarter
-    
+
+# Function to get the stop loss input from the user
 def get_stop_loss_threshold():
     def on_submit():
         nonlocal stop_loss_threshold
         try:
             user_input = threshold_entry.get()
-            # Vérifier que l'entrée n'est pas vide
+            
             if not user_input:
                 raise ValueError("Input cannot be empty.")
             
-            # Convertir l'entrée en float
             stop_loss_threshold = float(user_input)
             
-            # Vérifier que la valeur est positive
             if stop_loss_threshold <= 0:
                 raise ValueError("Threshold must be a positive number.")
             
-            root.quit()  # Fermer la fenêtre de l'input
-            root.destroy()  # Détruire la fenêtre
+            root.quit()  
+            root.destroy()  
         except ValueError as e:
-            # Afficher un message d'erreur si l'entrée est invalide
+
             messagebox.showerror("Invalid Input", f"Invalid input: {e}")
     
-    # Initialisation de la variable stop_loss_threshold
     stop_loss_threshold = None
     
-    # Créer la fenêtre Tkinter
     root = tk.Tk()
     root.title("Enter Stop-Loss Threshold")
     
-    # Ajouter un label et un champ de saisie
     tk.Label(root, text="Enter Stop-Loss Threshold (e.g., 0.1 for 10%):").pack(padx=10, pady=5)
     threshold_entry = tk.Entry(root)
     threshold_entry.pack(padx=10, pady=5)
     
-    # Ajouter un bouton de soumission
     tk.Button(root, text="Submit", command=on_submit).pack(pady=10)
     
-    # Lancer la boucle principale de Tkinter
     root.mainloop()
     
     return stop_loss_threshold
-    
+
+# Function to get the initial cash input from the user
 def get_initial_cash_input():
     def on_submit():
         nonlocal initial_cash

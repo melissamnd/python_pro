@@ -1,3 +1,14 @@
+
+#---------------------------------------------------------
+# This class implements the Long-Short Portfolio strategy improving pybacktestchain.data_module.
+# It includes the following functions:
+# - compute_portfolio: Calculates the portfolio weights by minimizing the portfolio variance.
+#                       It allows short selling with bounds of -1 (short) to +1 (long).
+#                       The objective is to minimize portfolio variance.
+# - compute_information: Retrieves the necessary data (returns, covariance matrix) to 
+#                        compute the portfolio weights.
+#---------------------------------------------------------
+
 import numpy as np
 import logging
 import yfinance as yf
@@ -12,7 +23,8 @@ from datetime import datetime, timedelta
 from scipy.optimize import minimize
 from pybacktestchain.data_module import Information
 
-# Volatility minimization with return objective
+#- This LongShortPortfolio unlike FirstTwoMoments allow for short selling. 
+
 @dataclass
 class LongShortPortfolio(Information):
     def compute_portfolio(self, t: datetime, information_set):
