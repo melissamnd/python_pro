@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="python_pro",                
+    name="mm_203_python_pro",                
     version="0.1",                   
     packages=find_packages(where="src"),  
     package_dir={"": "src"},          

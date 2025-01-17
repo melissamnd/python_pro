@@ -3,10 +3,10 @@ import pandas as pd
 from pybacktestchain.data_module import FirstTwoMoments, get_stocks_data
 from pybacktestchain.blockchain import load_blockchain
 from datetime import datetime
-from python_pro.Interactive_inputs import get_date_inputs, get_initial_cash_input, get_rebalancing_strategy, get_stop_loss_threshold, get_stock_inputs, strategy_choice
-from python_pro.new_broker import StopLoss_new, Backtest, AnalysisTool
-from python_pro.visualizing import PortfolioVisualizer, analyze_all_transactions
-from python_pro.new_data_module import LongShortPortfolio
+from mm_203_python_pro.Interactive_inputs import get_date_inputs, get_initial_cash_input, get_rebalancing_strategy, get_stop_loss_threshold, get_stock_inputs, strategy_choice
+from mm_203_python_pro.new_broker import StopLoss_new, Backtest, AnalysisTool
+from mm_203_python_pro.visualizing import PortfolioVisualizer, analyze_all_transactions
+from mm_203_python_pro.new_data_module import LongShortPortfolio
 
 
 verbose = False  

@@ -24,7 +24,7 @@ from pybacktestchain.broker import Position, StopLoss, RebalanceFlag, Broker
 from pybacktestchain.utils import generate_random_name
 from typing import Dict
 from numba import jit 
-from python_pro.Interactive_inputs import get_rebalancing_strategy, get_stocks_data, get_stock_data
+from mm_203_python_pro.Interactive_inputs import get_rebalancing_strategy, get_stocks_data, get_stock_data
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -329,7 +329,7 @@ class Backtest():
     broker = Broker_new(cash=initial_cash, verbose=verbose)
 
     def __post_init__(self):
-        from python_pro.Interactive_inputs import get_stop_loss_threshold
+        from mm_203_python_pro.Interactive_inputs import get_stop_loss_threshold
         self.rebalance_flag = get_rebalancing_strategy()  
         self.rebalance_flag = self.rebalance_flag() 
 
@@ -344,7 +344,7 @@ class Backtest():
         evolution_portfolio_value = []
         evolution_time = []
     
-        from python_pro.new_broker import Broker_new
+        from mm_203_python_pro.new_broker import Broker_new
         logging.info(f"Running backtest from {self.initial_date} to {self.final_date}.")
         logging.info(f"Retrieving price data for universe: {self.universe}")
         

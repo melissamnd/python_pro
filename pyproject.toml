@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "python_pro"
+name = "mm_203_python_pro"
 version = "0.1.0"
 description = "add functions"
 authors = ["Melissa Mesnard"]
