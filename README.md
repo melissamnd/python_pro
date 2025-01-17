@@ -81,6 +81,7 @@ from pybacktestchain.blockchain import load_blockchain
 block_chain = load_blockchain('backtest')
 print(str(block_chain)) 
 print(block_chain.is_valid())
+```
 
 ### 3. Visualize Results:
 Once the backtest has completed, graphs and analysis will be generated. This includes:
@@ -105,6 +106,7 @@ from pybacktestchain.blockchain import load_blockchain
 block_chain = load_blockchain('backtest')
 print(str(block_chain)) 
 print(block_chain.is_valid())
+```
 
 This will display the blockchain content and verify whether the results are valid.
 
