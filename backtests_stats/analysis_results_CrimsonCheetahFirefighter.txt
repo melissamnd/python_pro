@@ -1,0 +1,4 @@
+Portfolio Total Performance: 12.632758127975464
+Mean of the Returns: 0.0007006706210207169
+Volatility of the Returns: 0.017342598826144733
+Sharpe Ratio: -1.6894428379908812
