@@ -329,7 +329,7 @@ class Backtest():
     broker = Broker_new(cash=initial_cash, verbose=verbose)
 
     def __post_init__(self):
-        from src.python_pro.Interactive_inputs import get_stop_loss_threshold
+        from python_pro.Interactive_inputs import get_stop_loss_threshold
         self.rebalance_flag = get_rebalancing_strategy()  
         self.rebalance_flag = self.rebalance_flag() 
 

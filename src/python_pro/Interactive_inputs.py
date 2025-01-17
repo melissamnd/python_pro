@@ -169,7 +169,7 @@ def strategy_choice():
         strategy = FirstTwoMoments
         strategy_name = "First Two Moments Portfolio (No Short Selling)"
     elif choice == '2':
-        from src.python_pro.new_data_module import LongShortPortfolio
+        from python_pro.new_data_module import LongShortPortfolio
         strategy = LongShortPortfolio
         strategy_name = "Long Short Portfolio (With Short Selling)"
     else:
@@ -183,7 +183,7 @@ def strategy_choice():
 # Function to get the rebalancing strategy input from the user
 def get_rebalancing_strategy():
 
-    from src.python_pro.new_broker import EndOfWeek, EndOfMonth, EveryQuarter
+    from python_pro.new_broker import EndOfWeek, EndOfMonth, EveryQuarter
 
     root = tk.Tk()
     root.withdraw() 
