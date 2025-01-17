@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
+import seaborn as sns
 import plotly.graph_objects as go
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -447,7 +448,7 @@ class Backtest():
         plt.plot(portfolio_values_df['Date'], portfolio_values_df['PortfolioValue'], label="Portfolio Value")
         plt.title("Portfolio Value Over Time")
         plt.xlabel("Time")
-        plt.ylabel("Portfolio Value")
+        plt.ylabel("Portfolio Value ($)")
         plt.legend()
 
         # Save the figure to the 'backtests_graphs' folder
@@ -455,6 +456,71 @@ class Backtest():
             os.makedirs('backtests_graphs')
 
         plt.savefig(f"backtests_graphs/Portfolio_value/Portfolio_Value_Evolution_with_backtest_{self.backtest_name}.png", dpi=900)
+        plt.show()
+
+        """Plot the cumulative return of the portfolio over time."""
+        plt.figure(figsize=(12, 6))
+        plt.plot(portfolio_values_df['Date'], portfolio_values_df['CumulativeReturn'], label="Cumulative Return")
+        plt.title("Cumulative Return Over Time")
+        plt.xlabel("Time")
+        plt.ylabel("Cumulative Return (%)")
+        plt.legend()
+        
+        if not os.path.exists('backtests_graphs'):
+            os.makedirs('backtests_graphs')
+
+        plt.savefig(f"backtests_graphs/Cumulative_return/Cumulative_return_{self.backtest_name}.png", dpi=900)
+        plt.show()
+
+        """Plot the distribution of portfolio returns."""
+        returns = portfolio_values_df['PortfolioReturn'].dropna()
+        
+        plt.figure(figsize=(12, 6))
+        sns.histplot(returns, kde=True, bins=50)
+        plt.title("Distribution of Portfolio Returns")
+        plt.xlabel("Daily Returns")
+        plt.ylabel("Frequency")
+        
+        if not os.path.exists('backtests_graphs'):
+            os.makedirs('backtests_graphs')
+
+        plt.savefig(f"backtests_graphs/Returns_Distribution/Returns_Distribution_{self.backtest_name}.png", dpi=900)
+        plt.show()
+
+        """Plot the Sharpe Ratio over time."""
+        risk_free_rate=0.03
+        returns = portfolio_values_df['PortfolioReturn'].dropna()
+        excess_returns = returns - risk_free_rate
+        rolling_sharpe = excess_returns.rolling(window=252).mean() / excess_returns.rolling(window=252).std()
+
+        plt.figure(figsize=(12, 6))
+        rolling_sharpe.plot()
+        plt.title("Rolling 1-Year Sharpe Ratio")
+        plt.xlabel("Time")
+        plt.ylabel("Sharpe Ratio")
+        
+        if not os.path.exists('backtests_graphs'):
+            os.makedirs('backtests_graphs')
+
+        plt.savefig(f"backtests_graphs/Sharpe_Ratio/Sharpe_Ratio_{self.backtest_name}.png", dpi=900)
+        plt.show()
+
+        """Plot the maximum drawdown of the portfolio."""
+        portfolio_values_df['CumulativeReturn'] = (1 + portfolio_values_df['PortfolioReturn']).cumprod() - 1
+        portfolio_values_df['Peak'] = portfolio_values_df['CumulativeReturn'].cummax()
+        portfolio_values_df['Drawdown'] = portfolio_values_df['CumulativeReturn'] - portfolio_values_df['Peak']
+
+        plt.figure(figsize=(12, 6))
+        plt.plot(portfolio_values_df['Date'], portfolio_values_df['Drawdown'], label="Max Drawdown")
+        plt.title("Maximum Drawdown Over Time")
+        plt.xlabel("Time")
+        plt.ylabel("Drawdown")
+        plt.legend()
+
+        if not os.path.exists('backtests_graphs'):
+            os.makedirs('backtests_graphs')
+
+        plt.savefig(f"backtests_graphs/Max_Drawdown/Max_Drawdown_{self.backtest_name}.png", dpi=900)
         plt.show()
 
     def plot_portfolio_weights(self, start_date, end_date):
