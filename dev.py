@@ -1,6 +1,6 @@
 
 #### MY DEV.PY FILE
-
+import pandas as pd
 from pybacktestchain.data_module import FirstTwoMoments, get_stocks_data
 #from pybacktestchain.broker import StopLoss -- we will use our own StopLoss function
 from pybacktestchain.blockchain import load_blockchain
@@ -8,7 +8,7 @@ from datetime import datetime
 from src.python_pro.Interactive_inputs import get_date_inputs, get_initial_cash_input, get_rebalancing_strategy, get_stop_loss_threshold, get_stock_inputs, strategy_choice
 from src.python_pro.new_broker import StopLoss_new, Backtest, AnalysisTool
 from src.python_pro.visualizing import PortfolioVisualizer, analyze_all_transactions
-from src.python_pro.Optimization_portfolio_functions import LongShortPortfolio
+from src.python_pro.new_data_module import LongShortPortfolio
 
 # Set verbosity for logging
 verbose = False  # Set to True to enable logging, or False to suppress it
