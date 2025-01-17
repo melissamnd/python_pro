@@ -85,6 +85,7 @@ class PortfolioVisualizer:
         var = np.percentile(returns, (1 - confidence_level) * 100)
         return var
 
+    
 def analyze_all_transactions(backtest_instance):
     """
     Analyse toutes les transactions (achats et ventes) pour chaque action présente
@@ -95,18 +96,18 @@ def analyze_all_transactions(backtest_instance):
 
     # Définir le chemin complet du fichier CSV
     transaction_log_path = f'backtests/{backtest_name}.csv'
-    
+        
     # Vérifier si le fichier existe avant de le lire
     if os.path.exists(transaction_log_path):
         # Lire le fichier CSV du backtest
         df = pd.read_csv(transaction_log_path)
-        
+            
         # Créer le dossier backtest_stats s'il n'existe pas déjà
         if not os.path.exists('backtest_stats'):
             os.makedirs('backtest_stats')
 
         stats_list = []  # Liste pour stocker les résultats à sauvegarder dans un fichier
-        
+            
         # Récupérer tous les tickers uniques
         tickers = df['Ticker'].unique()
         print(f"Unique tickers found: {tickers}")
@@ -114,10 +115,10 @@ def analyze_all_transactions(backtest_instance):
         # Analyser chaque ticker
         for ticker in tickers:
             print(f"\nAnalyzing transactions for {ticker}:", flush=True)
-            
+                
             # Filtrer les transactions pour ce ticker
             ticker_df = df[df['Ticker'] == ticker]
-            
+                
             # Filtrer les achats et les ventes
             buy_ticker = ticker_df[ticker_df['Action'] == 'BUY']
             sell_ticker = ticker_df[ticker_df['Action'] == 'SELL']
@@ -156,7 +157,7 @@ def analyze_all_transactions(backtest_instance):
 
         # Convertir les résultats en DataFrame et les enregistrer dans un fichier CSV
         stats_df = pd.DataFrame(stats_list)
-        stats_df.to_csv('backtest_stats/transaction_analysis.csv', index=False)
+        stats_df.to_csv('backtest_transac_stats/transaction_analysis.csv', index=False)
         print(stats_df)
         print(f"Transaction analysis saved to 'backtest_stats/transaction_analysis_.csv'", flush=True)
 
